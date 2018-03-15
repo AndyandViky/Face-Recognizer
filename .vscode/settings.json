@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "functional": "cpp",
+        "iostream": "cpp",
+        "sstream": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "initializer_list": "cpp",
+        "valarray": "cpp",
+        "*.tcc": "cpp",
+        "opencv.hpp": "c"
+    },
+    "eslint.autoFixOnSave": false
+}
