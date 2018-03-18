@@ -257,6 +257,7 @@ void initCameraBox() {
         cameraBox[i].isOpen = false;
         cameraBox[i].cameraNum = -1;
         cameraBox[i].cam0Frame = {0};
+        cameraBox[i].isOperated = false;
     }
 }
 
@@ -264,7 +265,7 @@ void initCameraBox() {
  * 查询单台摄像头的状态
  */
 int checkCameraType(int cameraNum) {
-    for(int i = 0; i <= boxIndex; i++){
+    for(int i = 0; i < boxIndex; i++){
         if(cameraBox[i].cameraNum == cameraNum) {
             // 找到当前需要查询的摄像头
             if(cameraBox[i].isOpen == true) return 1;
@@ -276,9 +277,35 @@ int checkCameraType(int cameraNum) {
 /**
  * 查询所处理摄像头状态
  */
-int checkOperateCamera(int index) {
-    if(cameraBox[index-2].isOpen == true || cameraBox[index-1].isOpen == true) {
-        return 1;
+int checkOperateCamera(int *num) {
+    for(int i=0; i<sizeof(num)/sizeof(num[0]); i++) {
+        if(num[i] == -1) continue;
+        if(cameraBox[num[i]].isOpen == true) return 1;
     }
     return 0;
 }
+
+/**
+ * 查询当前开启的摄像头中有哪台的数据没有被处理
+ */
+int checkIsNotOperate() {
+    for(int i = 0; i < boxIndex; i++) {
+        if(cameraBox[i].isOpen && !cameraBox[i].isOperated) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * 查询所有摄像头的状态
+ */
+int checkAllCamera() {
+    for(int i = 0; i < boxIndex; i++) {
+        if(cameraBox[i].isOpen) {
+            return 1;
+        }
+    }
+    return 0;
+}
+

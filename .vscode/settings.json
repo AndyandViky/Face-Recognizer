@@ -10,7 +10,8 @@
         "initializer_list": "cpp",
         "valarray": "cpp",
         "*.tcc": "cpp",
-        "opencv.hpp": "c"
+        "opencv.hpp": "c",
+        "complex": "cpp"
     },
     "eslint.autoFixOnSave": false
 }

@@ -20,6 +20,8 @@ const int boxLength = 100;
 static CameraBox cameraBox[boxLength] = {0};
 // 全局摄像头当前index
 static int boxIndex = 0;
+// 全局锁定摄像头箱子, 防止多线程同时操作
+static MBool boxLock = false;
 
 // 全局定义人脸模型长度
 const int faceModelLength = 1000;

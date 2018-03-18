@@ -18,4 +18,5 @@ typedef struct{
     MBool isOpen;
     MInt32 cameraNum;
     IplImage *cam0Frame;
+    MBool isOperated;
 }CameraBox;
