@@ -139,6 +139,16 @@ char* replace_char(char *source, char s1, char s2)
     return q;
 }
 
+/**
+ * 改变图片格式
+ */
+void toYuv(const char* path, const char* target) {
+    char cmdline[300];
+    sprintf(cmdline, "bash /home/yanglin/yl/c++/arcsoft-arcface/arcface/bash/changeImage.sh %s %s", path, target);
+    
+    system(cmdline);
+}
+
 
 
 
@@ -309,3 +319,25 @@ int checkAllCamera() {
     return 0;
 }
 
+/**
+ * 查询摄像头所属位置
+ */
+int getCameraIndex(int cameraNum) {
+    for(int i = 0; i < boxIndex; i++) {
+        if(cameraBox[i].cameraNum == cameraNum) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * 获得当前开启的摄像头数量
+ */
+int getOpenCameraCount() {
+    int count = 0;
+    for(int i = 0; i < boxIndex; i++) {
+        if (cameraBox[i].isOpen) count++;
+    }
+    return count;
+}

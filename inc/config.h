@@ -7,6 +7,8 @@
 
 #define WORKBUF_SIZE  (50*1024*1024)
 
+#define REGISTER_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/register.yuv"
+
 /**
  * 图像比较参数
 */
@@ -26,8 +28,9 @@ static MBool boxLock = false;
 // 全局定义人脸模型长度
 const int faceModelLength = 1000;
 
-// 全局定义线程箱子
-pthread_t cameraID, checkID;
+// 全局定义线程池
+static pthread_t threadId[boxLength];
+static int threadIndex = 0;
 
 // 全局定义mysql配置信息
 const char *server = "localhost";
