@@ -127,7 +127,6 @@ FaceModelResult* getFaceModel(int *len) {
                 // printf("%d\n", models[0].lFeatureSize);
                 // printf("%s\n", models[0].pbFeature);
                 *len = count;
-                printf("%d\n", count);
             }
         }
     }

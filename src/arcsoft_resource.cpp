@@ -3,7 +3,6 @@
 #include "age_engine.h"
 #include "gender_engine.h"
 #include "job.h" 
-#include <pthread.h>
 
 #define CAMERA_IMAGE_FORMAT  ASVL_PAF_RGB24_B8G8R8
 
@@ -53,73 +52,20 @@ int freeOneCamera(int cameraNum) {
     freeAllEngine(); // 释放引擎
  }
 
-/**
- * 打开摄像头未封装版本
- */
-int camera = 0;
-void *_openCamera(void *arg) {
-    CvCapture* cam = cvCaptureFromCAM(camera);
-    if(!cam) {
-        printf("Could not initialize opening of Camera %d..\n", camera);
-    } else {
-        int cameraIndex = boxIndex;
-        boxIndex++;
-        cameraBox[cameraIndex].cameraNum = camera;
-        cameraBox[cameraIndex].isOpen = true;
-        cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE); // create a window called "Camera"
-        if(boxIndex%2 != 0) {
-            // 此处说明出现基数次的摄像头, 需要新开辟一个线程处理摄像头数据
 
-        }
-        while(checkCameraType(camera) == 1) {
-            cameraBox[cameraIndex].cam0Frame = cvQueryFrame(cam);
-            if (cameraBox[cameraIndex].cam0Frame) {
-                cvShowImage("Camera", cameraBox[cameraIndex].cam0Frame);
-            }
-            if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
-            {
-                // cout << "Esc key is pressed by user" << endl;
-                break;
-            }
-        }
-        cameraBox[cameraIndex].cam0Frame = {0};
-        cvReleaseCapture(&cam);
-    }
-}
+MBool swith = true;
 /**
- * 打开摄像头
- */
-int openCamera() {
-    pthread_t id;
-    printf("开启线程成功\n");
-    int ret = pthread_create(&id, NULL, _openCamera, NULL);
-    if(ret!=0){
-        printf ("Create pthread error!\n"); 
-        return -1;
-    }
-    while(true) {
-        if(cameraBox[0].cam0Frame) {
-            printf("%d\n", cameraBox[0].cam0Frame->width);
-            break;
-        }
-    };
-    pthread_join(id,NULL);
-    printf("关闭线程成功\n");
-    
-    return ret;
-}
-
-/**
- * 线程识别
+ * 线程识别未封装版本
  * 一个线程最多识别两台摄像头
  */
-void checkFace() {
-    int len = 1, currentIndex = boxIndex-1, cBox[2];
+void *_checkFace(void *arg) {
+    int len = 1, currentIndex = boxIndex-1, cBox[2], i, isOver;
     cBox[0] = boxIndex-1;
     cBox[1] = -1;
+    cameraBox[cBox[0]].isOperated = true;
     // 此处标记： 查询当前处理摄像头状态
     while(checkOperateCamera(cBox) == 1) {
-
+        printf("开始检测\n");
         if (len == 1) {
             // 此处说明当前线程还能再处理一台摄像头的数据
             int num = checkIsNotOperate();
@@ -135,29 +81,44 @@ void checkFace() {
         ASVLOFFSCREEN inputImg = { 0 };
         if (currentIndex == cBox[0]) {
             currentIndex = cBox[1]; 
-            if (cBox[0] != -1 && cameraBox[cBox[0]].cam0Frame && cameraBox[cBox[0]].isOpen) {
-                inputImg.i32Width = cameraBox[cBox[0]].cam0Frame->width;      
-                inputImg.i32Height = cameraBox[cBox[0]].cam0Frame->height;
-                inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[0]].cam0Frame->imageData[0];
+            if (cBox[0] != -1 && cameraBox[cBox[0]].isOpen) {
+                if (cameraBox[cBox[0]].cam0Frame) {
+                    printf("成功进入检测1\n");
+                    inputImg.i32Width = cameraBox[cBox[0]].cam0Frame->width;      
+                    inputImg.i32Height = cameraBox[cBox[0]].cam0Frame->height;
+                    inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[0]].cam0Frame->imageData[0];
+                }
+                else continue;
             } else {
                 cBox[0] = -1;
-                len--;
+                for(i=0, isOver=0; i<sizeof(cBox); i++) {
+                    if (cBox[i] != -1) isOver++;
+                }
+                len = isOver;
                 continue;
             };
         }
         else if(currentIndex == cBox[1]) {
             currentIndex = cBox[0];
-            if (cBox[1] != -1 && cameraBox[cBox[1]].cam0Frame && cameraBox[cBox[1]].isOpen) {
-                inputImg.i32Width = cameraBox[cBox[1]].cam0Frame->width;      
-                inputImg.i32Height = cameraBox[cBox[1]].cam0Frame->height;
-                inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[1]].cam0Frame->imageData[0];
+            if (cBox[1] != -1 && cameraBox[cBox[1]].isOpen) {
+                if (cameraBox[cBox[1]].cam0Frame) {
+                    printf("成功进入检测2\n");
+                    inputImg.i32Width = cameraBox[cBox[1]].cam0Frame->width;      
+                    inputImg.i32Height = cameraBox[cBox[1]].cam0Frame->height;
+                    inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[1]].cam0Frame->imageData[0];
+                }
+                else continue;
             } else {
                 cBox[1] = -1;
-                len--;
+                for(i=0, isOver=0; i<sizeof(cBox); i++) {
+                    if (cBox[i] != -1) isOver++;
+                }
+                len = isOver;
                 continue;
             };
         }
         else {
+            printf("发生错误修复\n");
             // 发生未知错误, 修复当前指向
             currentIndex = cBox[0];
             continue;
@@ -167,10 +128,10 @@ void checkFace() {
         inputImg = handleImage(inputImg);   
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
-        if(faceResult == NULL){
+        if(faceResult == NULL || faceResult->nFace <= 0){
+            printf("未检测到人脸\n");
             continue;
         }
-        
         //     cvSaveImage("/home/yanglin/yl/c++/arcsoft-arcface/first_demo/ArcFace_opencv/recognitionImage/recognition.jpg", cam0Frame);
         //     system("bash /home/yanglin/yl/c++/arcsoft-arcface/first_demo/ArcFace_opencv/bash/changeImage.sh");
 
@@ -182,22 +143,27 @@ void checkFace() {
         FaceModelResult *models = getFaceModel(&len);
         for (i = 0; i < faceResult->nFace; i++) {
             // 进入循环前需要将当前的人脸信息读取出来
-            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[i], faceResult->lfaceOrient[i]);
+            int orient = faceResult->lfaceOrient[i];
+            if (!orient) orient = 0;
+            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[i], orient);
+
             if(faceModels.lFeatureSize <= 0) {
                 continue;
             }
+            printf("获取到人脸图像\n");
+            
             // if(strlen((char *)faceModels.pbFeature) > 500) {
             //     insertFaceModel(faceModels);
             // }
-            for(k=0; k<len; k++) {
+            for(k=0; k<1; k++) {
                 MFloat result = compareFace(faceModels, models[k]);
                 // if(result != -1) {
                 //     if(result > 0.80) {
                 //         // 一旦发现一个大于0.8 结束循环
-                //         // 此处更新数据库，记录当前开门者及其类别
+                //    /     // 此处更新数据库，记录当前开门者及其类别
                 //         printf("%d\n", models[k].userId);
                 //         count = 10;       
-                //         //isSuccess = true;
+                //         /isSuccess = true;
                 //         break;
                 //     }
                 // }
@@ -205,19 +171,85 @@ void checkFace() {
             free(faceModels.pbFeature);
         }
     }
+    pthread_join(checkID,NULL);
+    printf("关闭检测线程成功\n");
     if (checkAllCamera() == 0) {
         freeAllEngine();
     }
+}
+
+/**
+ * 开启检测
+ **/
+int checkFace() {
+    printf("开启检测线程成功\n");
+    int ret = pthread_create(&checkID, NULL, _checkFace, NULL);
+    if(ret!=0){
+        printf ("Create pthread error!\n"); 
+        return -1;
+    }
+    return ret;
+}
+
+/**
+ * 打开摄像头未封装版本
+ */
+void *_openCamera(void *arg) {
+    int cameraIndex = boxIndex;
+    int camera = cameraBox[cameraIndex].cameraNum;
+    CvCapture* cam = cvCaptureFromCAM(camera);
+    if(!cam) {
+        printf("Could not initialize opening of Camera %d..\n", camera);
+    } else {
+        boxIndex++;
+        cameraBox[cameraIndex].isOpen = true;
+        cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE); // create a window called "Camera"
+
+        if(boxIndex%2 != 0) {
+            // 此处说明出现基数次的摄像头, 需要新开辟一个线程处理摄像头数据
+            checkFace();
+        }
+        while(checkCameraType(camera) == 1) {
+            cameraBox[cameraIndex].cam0Frame = cvQueryFrame(cam);
+            if (cameraBox[cameraIndex].cam0Frame) {
+                cvShowImage("Camera", cameraBox[cameraIndex].cam0Frame);
+            }
+            if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
+            {
+                swith = false;
+                // cout << "Esc key is pressed by user" << endl;
+                break;
+            }
+        }
+        cameraBox[cameraIndex].cam0Frame = {0};
+        cvReleaseCapture(&cam);
+    }
+    pthread_join(cameraID,NULL);
+    printf("关闭摄像头线程成功\n");
+}
+/**
+ * 打开摄像头
+ */
+int openCamera(int type) {
+    cameraBox[boxIndex].cameraNum = type;
+    printf("开启摄像头线程成功\n");
+    int ret = pthread_create(&cameraID, NULL, _openCamera, NULL);
+    if(ret!=0){
+        printf ("Create pthread error!\n"); 
+        return -1;
+    }
+    return ret;
 }
 
 int main(int argc, char* argv[]) {
 
     connectMysql();
     initCameraBox();
-    //initAllEngine();
+    initAllEngine();
 
-    int result = openCamera();
-    //freeAllEngine();
+    int result = openCamera(0);
+    while(swith) {}
+    freeAllEngine();
     //freeModels();
     freeMysql();
     return 0;

@@ -1,6 +1,7 @@
 
 #include "amcomdef.h"
 #include <opencv2/opencv.hpp>
+#include <pthread.h>
 /**
  * 获取人脸数据信息数据模型
  */
@@ -20,3 +21,10 @@ typedef struct{
     IplImage *cam0Frame;
     MBool isOperated;
 }CameraBox;
+
+/**
+ * 管理线程线程id
+ */
+typedef struct{
+    
+}ThreadBox;

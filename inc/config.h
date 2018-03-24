@@ -26,6 +26,9 @@ static MBool boxLock = false;
 // 全局定义人脸模型长度
 const int faceModelLength = 1000;
 
+// 全局定义线程箱子
+pthread_t cameraID, checkID;
+
 // 全局定义mysql配置信息
 const char *server = "localhost";
 const char *user = "root";

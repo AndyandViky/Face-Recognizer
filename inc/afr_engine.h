@@ -39,7 +39,6 @@ AFR_FSDK_FACEMODEL getFeature(ASVLOFFSCREEN inputImg, MRECT face, AFD_FSDK_Orien
         AFR_FSDK_FACEMODEL LocalFaceModels = { 0 };
         ret = AFR_FSDK_ExtractFRFeature(hEngineR, &inputImg, &faceResult, &LocalFaceModels);
         if (ret != 0) {
-            printf("%d\n", ret);
             fprintf(stderr, "fail to AFR_FSDK_ExtractFRFeature in Image A\r\n");
         }
         else {
