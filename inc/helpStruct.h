@@ -6,6 +6,7 @@
  * 获取人脸数据信息数据模型
  */
 typedef struct{
+    MInt32  id;
 	MInt32  userId;
     MByte   *faceData;
     MInt32  dataSize;

@@ -12,7 +12,9 @@
         "*.tcc": "cpp",
         "opencv.hpp": "c",
         "complex": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "typeinfo": "cpp",
+        "limits": "cpp"
     },
     "eslint.autoFixOnSave": false
 }

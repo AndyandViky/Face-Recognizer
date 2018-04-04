@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include "mysqlHelp.h"
 
-typedef void (*FUNC)(int type);
+typedef void (*FUNC)();
 void init_sigaction(FUNC a)
 {
     struct sigaction act;
@@ -33,10 +33,10 @@ void init_time(int second)
 /**
  * 每间隔5秒扫描数据库获取摄像头状态
  */
-void _cameraTypeJob(int type) {
-    printf("正在扫描");
+void _cameraTypeJob() {
+    printf("正在扫描\n");
 }
-void cameraTypeJob(int type) {
+void cameraTypeJob() {
     init_sigaction(_cameraTypeJob);
     init_time(1);
 }   

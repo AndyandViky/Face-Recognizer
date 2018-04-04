@@ -47,7 +47,7 @@ int checkAge(ASVLOFFSCREEN inputImg, MRECT faceRect, AFD_FSDK_OrientCode orient)
         fprintf(stderr, "fail to ASAE_FSDK_AgeEstimation_StaticImage(): 0x%x\r\n", ret);
         return -1;
     }
-    printf("%d\n", ageResult.pAgeResultArray[0]);
+    printf("年龄%d\n", ageResult.pAgeResultArray[0]);
     return ageResult.pAgeResultArray[0];
 }
 

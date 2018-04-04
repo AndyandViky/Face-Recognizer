@@ -48,7 +48,7 @@ int checkGender(ASVLOFFSCREEN inputImg, MRECT faceRect, AFD_FSDK_OrientCode orie
         fprintf(stderr, "fail to ASGE_FSDK_GenderEstimation_StaticImage(): 0x%x\r\n", ret);
         return -1;
     }
- 
+    printf("性别%d\n", genderResult.pGenderResultArray[0]);
     if (genderResult.pGenderResultArray[0] == 0) {
         // 男
         return 0;

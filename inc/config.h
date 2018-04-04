@@ -8,6 +8,7 @@
 #define WORKBUF_SIZE  (50*1024*1024)
 
 #define REGISTER_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/register.yuv"
+#define EHECK_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/check.yuv"
 
 /**
  * 图像比较参数
