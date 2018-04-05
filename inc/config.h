@@ -39,3 +39,12 @@ const char *user = "root";
 const char *password = "888888";//“******”为你设置的密码
 const unsigned int port = 3306;
 const char *database = "face";
+
+// -----------------串口变量配置-------   ------//
+static int fd = -1; // 全局串口设置
+static int nSpeed = 10000; // 全局波特率
+static int nBits = 8; // 全局数据位选择
+static char nEvent = 'N'; // 全局奇偶校验
+static int nStop = 1; // 全局停止位
+static char *fdPath = (char*)"/dev/ttyUSB0"; // 串口路径配置
+// -------------------------------------------//

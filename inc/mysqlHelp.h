@@ -109,7 +109,7 @@ FaceModelResult* getFaceModel(int *len) {
 
         MYSQL_RES *result; //保存结果
         MYSQL_ROW row; // 代表的是结果集中的一行
-        const char *i_query = "select model_data data_count people_id id from face_data where is_active=1";
+        const char *i_query = "select model_data data_count people_id face_data.id gender age pass_count from face_data where face_data.is_active=1 and face_data.people_id=peoples.id";
         if(mysql_query(&mysql, i_query) == 0) {
             result = mysql_store_result(&mysql);
             if(result) {
@@ -118,6 +118,9 @@ FaceModelResult* getFaceModel(int *len) {
                     models[count].userId = atoi(row[2]);
                     models[count].id = atoi(row[3]);
                     models[count].dataSize = atoi(row[1]);
+                    models[count].gender = atoi(row[4]);
+                    models[count].age = atoi(row[5]);
+                    models[count].passCount = atoi(row[6]);
                     char dedata[800];
                     base64_decode(row[0], (unsigned char*)dedata);
                     models[count].faceData = (MByte*)malloc(models[count].dataSize);
@@ -189,16 +192,16 @@ int insertRecord(const int id, const int count, const char* path) {
 }
 
 /**
- * 更新模型相似度
+ * 更新模型数据
  */
-int updateSemblance(const int id, const MFloat result) {
+int updateFaceData(const int id, const MFloat result, const int count) {
     char i_query[1000];
-    sprintf(i_query, "update face_data set semblance=%f where id=%d", result, id);
+    sprintf(i_query, "update face_data set semblance=%f count=%d where id=%d", result, count, id);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
         return 1;
     } else {
-        printf("插入失败%s\n", mysql_error(sock));
+        printf("更新失败%s\n", mysql_error(sock));
         return -1;
     }
 }

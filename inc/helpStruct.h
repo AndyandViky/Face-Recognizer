@@ -8,6 +8,9 @@
 typedef struct{
     MInt32  id;
 	MInt32  userId;
+    MInt32  gender;
+    MInt32  passCount;
+    MInt32  age;
     MByte   *faceData;
     MInt32  dataSize;
 }FaceModelResult;
