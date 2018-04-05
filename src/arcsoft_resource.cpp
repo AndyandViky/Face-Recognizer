@@ -3,6 +3,7 @@
 #include "age_engine.h"
 #include "gender_engine.h"
 #include "job.h" 
+#include "usb_help.h"
 
 #define CAMERA_IMAGE_FORMAT  ASVL_PAF_RGB24_B8G8R8
 
@@ -16,9 +17,19 @@ void freeAllEngine() {
     freeAgeEngine();
     freeGenderEngine();
     freeMysql();
+    closeFd();
 }
 
 MBool swith = true;
+static int saveCount = 0; // 暂存检测到的人脸数
+static MBool timeLimit = false; // 计时器锁
+
+// 暂存人数计时器
+void save_count_fn(int sig)    
+{  
+    saveCount = 0;
+    timeLimit = false;
+}  
 /**
  * 线程识别未封装版本
  * 一个线程最多识别两台摄像头
@@ -31,7 +42,6 @@ void *_checkFace(void *arg) {
     cBox[0] = boxIndex-1;
     cBox[1] = -1;
     cameraBox[cBox[0]].isOperated = true;
-    int saveCount = 0; // 暂存此次循环检测到的人脸数
     MBool isSuccess = false; // 判断此次循环是否开门成功
 
     // 此处标记： 查询当前处理摄像头状态 开始循环
@@ -105,6 +115,13 @@ void *_checkFace(void *arg) {
             continue;
         }
 
+        // 如果 暂存的人脸数长时间不变动 并且 时间锁为关闭状态
+        if (saveCount != 0 && !timeLimit) {
+            timeLimit = true;
+            signal(SIGALRM, save_count_fn);  //后面的函数必须是带int参数的
+            alarm(10); // 10秒之后刷新暂存人脸数
+        }
+
         /**
          * 获取模型数据, 开始识别
          */
@@ -112,7 +129,7 @@ void *_checkFace(void *arg) {
         int len, k, i;
         FaceModelResult *models = getFaceModel(&len);
         for (i = 0; i < faceResult->nFace; i++) {
-            if (isSuccess) break;
+            if (isSuccess) break; // 判断是否成功, 成功结束循环
 
             // 进入循环前需要将当前的人脸信息读取出来
             int orient = faceResult->lfaceOrient[i];
@@ -125,9 +142,10 @@ void *_checkFace(void *arg) {
             }
             // 获取性别以及年龄
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
-            int age = checkAge(inputImg, faceResult->rcFace[i], orient);
+            // int age = checkAge(inputImg, faceResult->rcFace[i], orient);
             
             for(k=0; k<len; k++) {
+                if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
                 if(result == -1)  continue;
                 if(result > 0.65) {
@@ -146,7 +164,7 @@ void *_checkFace(void *arg) {
                     }
                     printf("检测成功\n");
                     insertRecord(models[k].userId, faceResult->nFace, (char*)path);
-                    updateSemblance(models[k].id, result);
+                    updateFaceData(models[k].id, result, models[k].passCount+1);
                     // 相似度极高, 替换此模型
                     if (result > 0.8) {
                         // 相似度极高, 替换此模型
@@ -156,8 +174,19 @@ void *_checkFace(void *arg) {
                         free(base64);
                     }
                     // 发送串口
+                    const char *buffer = "10101010";
+                    int result = writFd(fd, buffer);
+                    if (result == -1) {
+                        printf("写入串口失败\n");
+                        break;
+                    }
                     isSuccess = true;
                     break;
+                }
+                // 此处判断是否处于当前循环的最后一组
+                if (k == len-1 && gender != -1) {
+                    k=0;
+                    gender == 0 ? 1 : 0;
                 }
             }
             if (faceModels.pbFeature) {
@@ -255,6 +284,8 @@ extern "C" {
         initialFaceREngine();
         initialAgeEngine();
         initialGenderEngine();
+        openFd(&fd, fdPath);
+        set_serial(fd, nSpeed, nBits, nEvent, nStop);
     }
     /**
      * 关闭一台摄像头
