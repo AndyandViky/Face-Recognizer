@@ -143,7 +143,7 @@ void *_checkFace(void *arg) {
             // 获取性别以及年龄
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
             // int age = checkAge(inputImg, faceResult->rcFace[i], orient);
-            
+            MBool isChangeGender = false;
             for(k=0; k<len; k++) {
                 if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
@@ -163,14 +163,14 @@ void *_checkFace(void *arg) {
                         cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
                     }
                     printf("检测成功\n");
-                    insertRecord(models[k].userId, faceResult->nFace, (char*)path);
+                    insertRecord(models[k].userId, faceResult->nFace, (char*)path, result);
                     updateFaceData(models[k].id, result, models[k].passCount+1);
                     // 相似度极高, 替换此模型
-                    if (result > 0.8) {
+                    if (result > 0.7) {
                         // 相似度极高, 替换此模型
                         char *base64 = (char *)malloc(800);
                         base64_encode(faceModels.pbFeature, base64);
-                        updateFaceModel(models[k].userId, base64, path, result);
+                        updateFaceModel(models[k].userId, base64, path, result, faceModels.lFeatureSize, 2);
                         free(base64);
                     }
                     // 发送串口
@@ -184,7 +184,8 @@ void *_checkFace(void *arg) {
                     break;
                 }
                 // 此处判断是否处于当前循环的最后一组
-                if (k == len-1 && gender != -1) {
+                if (k == len-1 && gender != -1 && !isChangeGender) {
+                    isChangeGender = true;
                     k=0;
                     gender == 0 ? 1 : 0;
                 }
@@ -210,7 +211,7 @@ void *_checkFace(void *arg) {
                 sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
                 cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
             }
-            insertRecord(-1, faceResult->nFace, (char*)path);
+            insertRecord(-1, faceResult->nFace, (char*)path, 0);
         }
     }
     pthread_join(checkID, NULL);
@@ -348,7 +349,9 @@ extern "C" {
     /**
      * 根据图片获取人脸特征数据
      */
-    int checkFeature(const char* path) {
+    int checkFeature(const int imageId) {
+        const char* path = getImagePath(imageId);
+        if (path == "fail") return -1;
         toYuv(path, EHECK_PATH);
         ASVLOFFSCREEN inputImg = getImage(EHECK_PATH);
         
@@ -356,7 +359,7 @@ extern "C" {
         
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            if(strlen((char *)faceModels.pbFeature) > 200) {
+            if(faceModels && strlen((char *)faceModels.pbFeature) > 200) {
                 return 1;
             }
         }
@@ -374,13 +377,50 @@ extern "C" {
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            if(strlen((char *)faceModels.pbFeature) > 200) {
+            if(faceModels && strlen((char *)faceModels.pbFeature) > 200) {
                 char *base64 = (char *)malloc(800);
                 base64_encode(faceModels.pbFeature, base64);
                 int result = addFaceModel(id, base64, faceModels.lFeatureSize, path, isActivte);
                 free(base64);
                 return result;
             }
+        }
+        return -1;
+    }
+    /**
+     * 发送串口
+     */
+    int writeFd() {
+        // 发送串口
+        if (fd > 0) {
+            const char *buffer = "10101010";
+            int result = writFd(fd, buffer);
+            if (result == -1) {
+                printf("写入串口失败\n");
+                return -1;
+            }
+            return 1;
+        }
+        return -1;
+    }
+    /**
+     * 更新第二张人脸图片
+     */
+    int updateSecondFaceModel(const int id, const int recordId) {
+        MFloat score = 0.00f;
+        const char* path = getRecordImage(recordId, &score);
+        if (path == "fail") return -1;
+        toYuv(path, UPDATE_PATH);
+        ASVLOFFSCREEN inputImg = getImage(UPDATE_PATH);
+        
+        LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+        if(faceResult != NULL && faceResult->nFace == 1){
+            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+            char *base64 = (char *)malloc(800);
+            base64_encode(faceModels.pbFeature, base64);
+            int result = updateFaceModel(id, base64, path, score, faceModels.lFeatureSize, 1);
+            free(base64);
+            return result;
         }
         return -1;
     }

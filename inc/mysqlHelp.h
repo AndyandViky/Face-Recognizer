@@ -145,7 +145,7 @@ FaceModelResult* getFaceModel(int *len) {
 
 int addFaceModel(const int id, const char* model, const int size, const char* path, const int isActived) {
     char i_query[1000];
-    sprintf(i_query, "insert into face_data(people_id, model_data, data_count, model_image, is_active) values(%d, '%s', %d, '%s', %d)", id, model, size, path, isActived);
+    sprintf(i_query, "insert into face_data(people_id, model_data, data_count, model_image, is_active, `type`) values(%d, '%s', %d, '%s', %d, %d)", id, model, size, path, isActived, 0);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
         return 1;
@@ -179,9 +179,9 @@ char* getImagePath(const int id) {
 /**
  * 记录门禁
  */
-int insertRecord(const int id, const int count, const char* path) {
+int insertRecord(const int id, const int count, const char* path, const MFloat score) {
     char i_query[1000];
-    sprintf(i_query, "insert into camera_record(people_id, face_img, count) values(%d, '%s', '%d')", id, path, count);
+    sprintf(i_query, "insert into camera_record(people_id, face_img, count, semblance) values(%d, '%s', %d, %f)", id, path, count, score);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
         return 1;
@@ -209,43 +209,60 @@ int updateFaceData(const int id, const MFloat result, const int count) {
 /**
  * 相似度极高, 替换模型
  */
-int updateFaceModel(const int id, const char* model, const char* path, const MFloat similScore) {
+int updateFaceModel(const int id, const char* model, const char* path, const MFloat similScore, const int size, const int type) {
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200], u_query[800];
-    int ids[3];
-    MFloat semblances[3];
-    int count = 0;
-    sprintf(i_query, "select id semblance from face_data where is_active=1 and people_id=%d", id);
+    int dataId = -1;
+    MFloat semblance = 0.00f;
+    sprintf(i_query, "select id semblance from face_data where is_active=1 and people_id=%d and `type`=%d", id, type);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
-            while((row = mysql_fetch_row(result)) != NULL) {
-                ids[count] = atoi(row[0]);
-                semblances[count] = atof(row[1]);
-                count++;
+            if((row = mysql_fetch_row(result)) != NULL) {
+                dataId = atoi(row[0]);
+                semblance = atof(row[1]);
             }
             mysql_free_result(result);
         }
     }
-    // 查询完毕, 开始处理
-    if (count == 0) return -1;
-    MFloat min = 0.00f;
-    int minId = 0;
-    for (int i=0; i<count; i++) {
-        // 找到最小的那个相似度
-        if (min <= semblances[i]) {
-            min = semblances[i];
-            minId = ids[i];
+    if (dataId == -1) {
+        // 说明没有寻找到数据 insert
+        sprintf(u_query, "insert into face_data(people_id, model_data, data_count, model_image, is_active, `type`, semblance) values(%d, '%s', %d, '%s', %d, %d, %f)", id, model, size, path, 1, type, similScore);
+        if(mysql_query(&mysql, u_query) == 0) {
+            return 1;
+        }
+    } else {
+        // 判断数据是否小于当前检测出来的数据
+        if (semblance < similScore) {
+            // 替换数据
+            sprintf(u_query, "update face_data set model_data='%s' semblance=%f model_image='%s' where id=%d", model, similScore, path, id);
+            if(mysql_query(&mysql, u_query) == 0) {
+                return 1;
+            }
         }
     }
-    // 找到最小的那个值, 判断最小的那个值是否小于当前获得的那个值
-    if (min >= similScore || minId == 0) return -1;
-    
-    // 替换数据
-    sprintf(u_query, "update face_data set model_data='%s' semblance=%f model_image='%s' where id=%d", model, similScore, path, minId);
-    if(mysql_query(&mysql, u_query) == 0) {
-        return 1;
-    }
     return -1;
+}
+
+/**
+ * 根据record_id 获取图片路径
+ */
+char* getRecordImage(const int id, MFloat *score) {
+    MYSQL_RES *result; //保存结果
+    MYSQL_ROW row; // 代表的是结果集中的一行
+    char i_query[200];
+    sprintf(i_query, "select face_img semblance from camera_record where id=%d", id);
+    if(mysql_query(&mysql, i_query) == 0) {
+        result = mysql_store_result(&mysql);
+        if(result) {
+            if((row = mysql_fetch_row(result)) != NULL) {
+                *score = atof(row[1]);
+                return row[0];
+            }
+            mysql_free_result(result);
+        }
+    }
+    char *fail = (char*)"fail";
+    return fail;
 }
