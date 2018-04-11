@@ -63,7 +63,6 @@ void *_checkFace(void *arg) {
             currentIndex = cBox[1]; 
             if (cBox[0] != -1 && cameraBox[cBox[0]].isOpen) {
                 if (cameraBox[cBox[0]].cam0Frame) {
-                    // printf("成功进入检测1\n");
                     inputImg.i32Width = cameraBox[cBox[0]].cam0Frame->width;      
                     inputImg.i32Height = cameraBox[cBox[0]].cam0Frame->height;
                     inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[0]].cam0Frame->imageData[0];
@@ -82,7 +81,6 @@ void *_checkFace(void *arg) {
             currentIndex = cBox[0];
             if (cBox[1] != -1 && cameraBox[cBox[1]].isOpen) {
                 if (cameraBox[cBox[1]].cam0Frame) {
-                    // printf("成功进入检测2\n");
                     inputImg.i32Width = cameraBox[cBox[1]].cam0Frame->width;      
                     inputImg.i32Height = cameraBox[cBox[1]].cam0Frame->height;
                     inputImg.ppu8Plane[0] = (MUInt8*)&cameraBox[cBox[1]].cam0Frame->imageData[0];
@@ -135,7 +133,7 @@ void *_checkFace(void *arg) {
             int orient = faceResult->lfaceOrient[i];
             if (!orient) orient = 0;
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[i], orient);
-            
+            printf("人脸数据长度%d------------------------\n", (int)strlen((char *)faceModels.pbFeature));
             // 如果长度不正确, continue;
             if(faceModels.lFeatureSize <= 0) {
                 continue;
@@ -350,16 +348,16 @@ extern "C" {
      * 根据图片获取人脸特征数据
      */
     int checkFeature(const int imageId) {
-        const char* path = getImagePath(imageId);
-        if (path == "fail") return -1;
-        toYuv(path, EHECK_PATH);
-        ASVLOFFSCREEN inputImg = getImage(EHECK_PATH);
+        Attachment attachment =  getAttachment(imageId);
+        if (strlen(attachment.path) <= 0) return -1;
+        toYuv(attachment.path, EHECK_PATH);
+        ASVLOFFSCREEN inputImg = getImage(EHECK_PATH, attachment.width, attachment.height);
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            if(faceModels && strlen((char *)faceModels.pbFeature) > 200) {
+            if(strlen((char *)faceModels.pbFeature) > 200) {
                 return 1;
             }
         }
@@ -369,21 +367,25 @@ extern "C" {
      * 增加模型
      */
     int addModel(const int id, const int imageId, const int isActivte) {
-        const char* path = getImagePath(imageId);
-        if (path == "fail") return -1;
-        toYuv(path, REGISTER_PATH);
-        ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH);
+        Attachment attachment =  getAttachment(imageId);
+        if (strlen(attachment.path) <= 0) return -1;
+        char paths[300];
+        strcpy(paths, ROOTPATH);
+        strcat(paths, attachment.path);
+        toYuv(paths, REGISTER_PATH);
+        ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+        printf("人脸数量%d------------------------\n", faceResult->nFace);
+        printf("%d -- %d -- %d -- %d", faceResult->rcFace[0].top, faceResult->rcFace[0].right, faceResult->rcFace[0].left, faceResult->rcFace[0].bottom);
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            if(faceModels && strlen((char *)faceModels.pbFeature) > 200) {
-                char *base64 = (char *)malloc(800);
-                base64_encode(faceModels.pbFeature, base64);
-                int result = addFaceModel(id, base64, faceModels.lFeatureSize, path, isActivte);
-                free(base64);
-                return result;
-            }
+            printf("人脸数据长度%d------------------------\n", (int)strlen((char *)faceModels.pbFeature));
+            char *base64 = (char *)malloc(faceModels.lFeatureSize);
+            base64_encode(faceModels.pbFeature, base64);
+            int result = addFaceModel(id, base64, faceModels.lFeatureSize, attachment.path, isActivte);
+            free(base64);
+            return result;
         }
         return -1;
     }
@@ -393,7 +395,8 @@ extern "C" {
     int writeFd() {
         // 发送串口
         if (fd > 0) {
-            const char *buffer = "10101010";
+            printf("进入串口\n");
+            const char *buffer = "OPENDOOR2\r\n";
             int result = writFd(fd, buffer);
             if (result == -1) {
                 printf("写入串口失败\n");
@@ -411,7 +414,7 @@ extern "C" {
         const char* path = getRecordImage(recordId, &score);
         if (path == "fail") return -1;
         toYuv(path, UPDATE_PATH);
-        ASVLOFFSCREEN inputImg = getImage(UPDATE_PATH);
+        ASVLOFFSCREEN inputImg = getImage(UPDATE_PATH, INPUT_IMAGE_WIDTH, INPUT_IMAGE_HEIGHT);
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
@@ -429,14 +432,14 @@ extern "C" {
 int main(int argc, char* argv[]) {
 
     initAllEngine();
-    int result = openCamera(0);
-    while(swith) {
-        // if (!swith) {
-        //     freeOneCamera(0);
-        // }
-    }
-    // const char* path = "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/recognition.jpg";
-    // addModel(1, path, 1);
+    writeFd();
+    // int result = openCamera(0);
+    // //addModel(2, 72, 1);
+    // while(swith) {
+    //     // if (!swith) {
+    //     //     freeOneCamera(0);
+    //     // }
+    // }
     freeAllEngine();
     return 0;
 }
