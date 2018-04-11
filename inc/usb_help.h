@@ -22,7 +22,6 @@ int openFd(int *fd, const char* path) {
  */
 int writFd(const int fd, const char* buffer) {
     int result = write(fd, buffer, strlen(buffer));
-    
     if (result < 0) {
         printf("写入串口失败\n");
         return -1;
@@ -54,7 +53,7 @@ int set_serial(int fd, int nSpeed, int nBits, char nEvent, int nStop)
           return -1;
      }
      bzero(&newttys1,sizeof(newttys1));
-     newttys1.c_cflag|=(CLOCAL|CREAD ); /*CREAD 开启串行数据接收，CLOCAL并打开本地连接模式*/
+     newttys1.c_cflag|=(CLOCAL|CREAD); /*CREAD 开启串行数据接收，CLOCAL并打开本地连接模式*/
 
      newttys1.c_cflag &=~CSIZE;/*设置数据位*/
      /*数据位选择*/   

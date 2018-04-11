@@ -92,11 +92,11 @@ ASVLOFFSCREEN handleImage(ASVLOFFSCREEN inputImg) {
 /**
  * 读取图片
  */
-ASVLOFFSCREEN getImage(const char* path) {
+ASVLOFFSCREEN getImage(const char* path, const int width, const int height) {
     ASVLOFFSCREEN inputImg = { 0 };
     inputImg.u32PixelArrayFormat = COMPARE_IMAGE_FORMAT;
-    inputImg.i32Width = INPUT_IMAGE_WIDTH;
-    inputImg.i32Height = INPUT_IMAGE_HEIGHT;
+    inputImg.i32Width = width;
+    inputImg.i32Height = height;
     inputImg.ppu8Plane[0] = NULL;
     fu_ReadFile(path, (uint8_t**)&inputImg.ppu8Plane[0], NULL);
     if (inputImg.ppu8Plane[0]) {

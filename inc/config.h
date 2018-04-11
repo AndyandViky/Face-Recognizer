@@ -18,6 +18,7 @@
 #define INPUT_IMAGE_WIDTH   (640)
 #define INPUT_IMAGE_HEIGHT  (480)
 
+char ROOTPATH[100] =  "/home/yanglin/yl/c++/arcsoft-arcface/face-api/";
 // 全局定义箱子长度
 const int boxLength = 100;
 // 全局摄像头箱子
@@ -43,7 +44,7 @@ const char *database = "face";
 
 // -----------------串口变量配置-------   ------//
 static int fd = -1; // 全局串口设置
-static int nSpeed = 10000; // 全局波特率
+static int nSpeed = 9600; // 全局波特率
 static int nBits = 8; // 全局数据位选择
 static char nEvent = 'N'; // 全局奇偶校验
 static int nStop = 1; // 全局停止位

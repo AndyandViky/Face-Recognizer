@@ -27,8 +27,10 @@ typedef struct{
 }CameraBox;
 
 /**
- * 管理线程线程id
+ * 附件模型
  */
 typedef struct{
-    
-}ThreadBox;
+    char    path[100];
+    MInt32  width;
+    MInt32  height;
+}Attachment;

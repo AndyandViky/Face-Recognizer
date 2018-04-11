@@ -109,7 +109,7 @@ FaceModelResult* getFaceModel(int *len) {
 
         MYSQL_RES *result; //保存结果
         MYSQL_ROW row; // 代表的是结果集中的一行
-        const char *i_query = "select model_data data_count people_id face_data.id gender age pass_count from face_data where face_data.is_active=1 and face_data.people_id=peoples.id";
+        const char *i_query = "select model_data, data_count, people_id, face_data.id, gender, age, pass_count from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1";
         if(mysql_query(&mysql, i_query) == 0) {
             result = mysql_store_result(&mysql);
             if(result) {
@@ -158,22 +158,25 @@ int addFaceModel(const int id, const char* model, const int size, const char* pa
 /**
  * 根据imageId获取 path
  */
-char* getImagePath(const int id) {
-    MYSQL_RES *result; //保存结果
+Attachment getAttachment(const int id) {
+    MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200];
-    sprintf(i_query, "select path from attachment where id=%d", id);
+    Attachment attachment = {0};
+    sprintf(i_query, "select path, width, height from attachment where id=%d", id);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
-                return row[0];
+                printf("查询到数据 %s\n", row[0]);
+                strcat(attachment.path, row[0]);
+                attachment.width = atoi(row[1]);
+                attachment.height = atoi(row[2]); 
             }
             mysql_free_result(result);
         }
     }
-    char *fail = (char*)"fail";
-    return fail;
+    return attachment;
 }
 
 /**
@@ -215,7 +218,7 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
     char i_query[200], u_query[800];
     int dataId = -1;
     MFloat semblance = 0.00f;
-    sprintf(i_query, "select id semblance from face_data where is_active=1 and people_id=%d and `type`=%d", id, type);
+    sprintf(i_query, "select id, semblance, from, face_data, where is_active=1 and people_id=%d and `type`=%d", id, type);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
@@ -252,7 +255,7 @@ char* getRecordImage(const int id, MFloat *score) {
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200];
-    sprintf(i_query, "select face_img semblance from camera_record where id=%d", id);
+    sprintf(i_query, "select face_img, semblance from camera_record where id=%d", id);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
