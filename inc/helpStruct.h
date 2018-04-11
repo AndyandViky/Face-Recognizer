@@ -13,6 +13,7 @@ typedef struct{
     MInt32  age;
     MByte   *faceData;
     MInt32  dataSize;
+    MFloat  semblance;
 }FaceModelResult;
 
 

@@ -164,7 +164,7 @@ int base64_encode(const unsigned char * sourcedata, char * base64)
 {
     int i=0, j=0;
     unsigned char trans_index=0;    // 索引是8位，但是高两位都为0
-    const int datalength = strlen((const char*)sourcedata);
+    const int datalength = 22020;
     for (; i < datalength; i += 3){
         // 每三个一组，进行编码
         // 要编码的数字的第一个

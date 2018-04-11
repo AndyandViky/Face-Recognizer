@@ -67,7 +67,7 @@ int checkUpdate() {
     // 1. 查询所有的摄像头状态
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
-    const char *i_query = "select isUpdate from config";
+    const char *i_query = "select isUpdate from config where id=1";
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
@@ -103,13 +103,12 @@ void freeModels() {
  * 获取人脸数据信息
  */
 FaceModelResult* getFaceModel(int *len) {
-    //int cnt = checkUpdate();
-    cnt++;
+    int cnt = checkUpdate();
     if(cnt == 1) {
 
         MYSQL_RES *result; //保存结果
         MYSQL_ROW row; // 代表的是结果集中的一行
-        const char *i_query = "select model_data, data_count, people_id, face_data.id, gender, age, pass_count from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1";
+        const char *i_query = "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1";
         if(mysql_query(&mysql, i_query) == 0) {
             result = mysql_store_result(&mysql);
             if(result) {
@@ -121,10 +120,11 @@ FaceModelResult* getFaceModel(int *len) {
                     models[count].gender = atoi(row[4]);
                     models[count].age = atoi(row[5]);
                     models[count].passCount = atoi(row[6]);
-                    char dedata[800];
+                    models[count].semblance = atof(row[7]);
+                    char dedata[models[count].dataSize];
                     base64_decode(row[0], (unsigned char*)dedata);
                     models[count].faceData = (MByte*)malloc(models[count].dataSize);
-                    for(int k=0;k<strlen((char *)dedata); k++) {
+                    for(int k=0;k<models[count].dataSize; k++) {
                         models[count].faceData[k] = dedata[k];
                     }  
                     count++;
@@ -133,7 +133,7 @@ FaceModelResult* getFaceModel(int *len) {
             }
         }
         // 获取之后更新
-        const char *u_query = "update config set isUpdate=0";
+        const char *u_query = "update config set isUpdate=0 where id=1";
         mysql_query(&mysql, u_query);
     }
     return models;
@@ -144,8 +144,8 @@ FaceModelResult* getFaceModel(int *len) {
  */
 
 int addFaceModel(const int id, const char* model, const int size, const char* path, const int isActived) {
-    char i_query[1000];
-    sprintf(i_query, "insert into face_data(people_id, model_data, data_count, model_image, is_active, `type`) values(%d, '%s', %d, '%s', %d, %d)", id, model, size, path, isActived, 0);
+    char i_query[30000];
+    sprintf(i_query, "insert into face_data(people_id, model_data, data_count, is_active, `type`, model_image) values(%d, '%s', %d, %d, %d, '%s')", id, model, size, isActived, 0, path);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
         return 1;
@@ -161,14 +161,13 @@ int addFaceModel(const int id, const char* model, const int size, const char* pa
 Attachment getAttachment(const int id) {
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
-    char i_query[200];
+    char i_query[300];
     Attachment attachment = {0};
     sprintf(i_query, "select path, width, height from attachment where id=%d", id);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
-                printf("查询到数据 %s\n", row[0]);
                 strcat(attachment.path, row[0]);
                 attachment.width = atoi(row[1]);
                 attachment.height = atoi(row[2]); 
@@ -183,7 +182,7 @@ Attachment getAttachment(const int id) {
  * 记录门禁
  */
 int insertRecord(const int id, const int count, const char* path, const MFloat score) {
-    char i_query[1000];
+    char i_query[300];
     sprintf(i_query, "insert into camera_record(people_id, face_img, count, semblance) values(%d, '%s', %d, %f)", id, path, count, score);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
@@ -198,8 +197,8 @@ int insertRecord(const int id, const int count, const char* path, const MFloat s
  * 更新模型数据
  */
 int updateFaceData(const int id, const MFloat result, const int count) {
-    char i_query[1000];
-    sprintf(i_query, "update face_data set semblance=%f count=%d where id=%d", result, count, id);
+    char i_query[200];
+    sprintf(i_query, "update face_data set semblance=%f, pass_count=%d where id=%d", result, count, id);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
         return 1;
@@ -215,10 +214,10 @@ int updateFaceData(const int id, const MFloat result, const int count) {
 int updateFaceModel(const int id, const char* model, const char* path, const MFloat similScore, const int size, const int type) {
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
-    char i_query[200], u_query[800];
+    char i_query[200], u_query[30000];
     int dataId = -1;
     MFloat semblance = 0.00f;
-    sprintf(i_query, "select id, semblance, from, face_data, where is_active=1 and people_id=%d and `type`=%d", id, type);
+    sprintf(i_query, "select id, semblance from face_data where is_active=1 and people_id=%d and `type`=%d", id, type);
     if(mysql_query(&mysql, i_query) == 0) {
         result = mysql_store_result(&mysql);
         if(result) {
@@ -226,7 +225,6 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
                 dataId = atoi(row[0]);
                 semblance = atof(row[1]);
             }
-            mysql_free_result(result);
         }
     }
     if (dataId == -1) {
@@ -239,11 +237,14 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
         // 判断数据是否小于当前检测出来的数据
         if (semblance < similScore) {
             // 替换数据
-            sprintf(u_query, "update face_data set model_data='%s' semblance=%f model_image='%s' where id=%d", model, similScore, path, id);
+            sprintf(u_query, "update face_data set model_data='%s', semblance=%f, model_image='%s' where people_id=%d and type=%d", model, similScore, path, id, type);
             if(mysql_query(&mysql, u_query) == 0) {
                 return 1;
+            } else {
+                printf("更新失败%s\n", mysql_error(sock));
+                return -1;
             }
-        }
+        } 
     }
     return -1;
 }

@@ -30,6 +30,7 @@ void save_count_fn(int sig)
     saveCount = 0;
     timeLimit = false;
 }  
+
 /**
  * 线程识别未封装版本
  * 一个线程最多识别两台摄像头
@@ -43,6 +44,10 @@ void *_checkFace(void *arg) {
     cBox[1] = -1;
     cameraBox[cBox[0]].isOperated = true;
     MBool isSuccess = false; // 判断此次循环是否开门成功
+    struct timeval tv;
+    long int times;
+    char *base64 = (char *)malloc(22020);
+    char *buffer;
 
     // 此处标记： 查询当前处理摄像头状态 开始循环
     while(checkOperateCamera(cBox) == 1) {
@@ -109,7 +114,6 @@ void *_checkFace(void *arg) {
         if(faceResult == NULL || faceResult->nFace <= 0){
             // 未检测到人脸, 关门;
             isSuccess = false;
-            printf("未检测到人脸\n");
             continue;
         }
 
@@ -133,9 +137,8 @@ void *_checkFace(void *arg) {
             int orient = faceResult->lfaceOrient[i];
             if (!orient) orient = 0;
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[i], orient);
-            printf("人脸数据长度%d------------------------\n", (int)strlen((char *)faceModels.pbFeature));
             // 如果长度不正确, continue;
-            if(faceModels.lFeatureSize <= 0) {
+            if(faceModels.pbFeature <= 0) {
                 continue;
             }
             // 获取性别以及年龄
@@ -146,13 +149,12 @@ void *_checkFace(void *arg) {
                 if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
                 if(result == -1)  continue;
-                if(result > 0.65) {
+                if(result > 0.60) {
                     // 此处更新数据库，记录当前开门者及其类别
-                    struct timeval tv;
                     gettimeofday(&tv,NULL);
-                    long int times = tv.tv_sec*1000000 + tv.tv_usec;
+                    times = tv.tv_sec*1000000 + tv.tv_usec;
                     char path[255];
-                    sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/%dimage%ld.jpg", models[k].userId, times);
+                    sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", models[k].userId, times);
                     if (currentIndex == cBox[0]) {
                         // 1
                         cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
@@ -160,24 +162,23 @@ void *_checkFace(void *arg) {
                         // 0
                         cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
                     }
-                    printf("检测成功\n");
-                    insertRecord(models[k].userId, faceResult->nFace, (char*)path, result);
+                    char iPath1[100];
+                    strncpy(iPath1, path+46, strlen(path)-46);
+                    insertRecord(models[k].userId, faceResult->nFace, (char*)iPath1, result);
                     updateFaceData(models[k].id, result, models[k].passCount+1);
+                    models[k].passCount++;
                     // 相似度极高, 替换此模型
                     if (result > 0.7) {
                         // 相似度极高, 替换此模型
-                        char *base64 = (char *)malloc(800);
                         base64_encode(faceModels.pbFeature, base64);
+                        printf("相似度极高\n");
                         updateFaceModel(models[k].userId, base64, path, result, faceModels.lFeatureSize, 2);
-                        free(base64);
                     }
                     // 发送串口
-                    const char *buffer = "10101010";
-                    int result = writFd(fd, buffer);
-                    if (result == -1) {
-                        printf("写入串口失败\n");
-                        break;
-                    }
+                    if (currentIndex == 0) {
+                        buffer = (char*)"OPENDOOR2\r\n";
+                    } else buffer = (char*)"OPENDOOR1\r\n";
+                    writFd(fd, buffer);
                     isSuccess = true;
                     break;
                 }
@@ -196,22 +197,24 @@ void *_checkFace(void *arg) {
             saveCount = faceResult->nFace;
             printf("插入记录\n");
             // 判断是否成功
-            struct timeval tv;
             gettimeofday(&tv,NULL);
-            long int times = tv.tv_sec*1000000 + tv.tv_usec;
-            char path[255];
+            times = tv.tv_sec*1000000 + tv.tv_usec;
+            char paths[255];
             if (currentIndex == cBox[0]) {
                 // 1
-                sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
-                cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
+                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
+                cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
             } else {
                 // 0
-                sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
-                cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
+                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);;
+                cvSaveImage(paths , cameraBox[cBox[0]].cam0Frame);
             }
-            insertRecord(-1, faceResult->nFace, (char*)path, 0);
+            char iPath2[100];
+            strncpy(iPath2, paths+46, strlen(paths)-46);
+            insertRecord(-1, faceResult->nFace, (char*)iPath2, 0);
         }
     }
+    free(base64);
     pthread_join(checkID, NULL);
     printf("关闭检测线程成功\n");
     if (checkAllCamera() == 0) {
@@ -301,7 +304,6 @@ extern "C" {
         }
         return 0;
     }
-
     /**
      * 获取所有摄像头信息
      */
@@ -350,14 +352,14 @@ extern "C" {
     int checkFeature(const int imageId) {
         Attachment attachment =  getAttachment(imageId);
         if (strlen(attachment.path) <= 0) return -1;
-        toYuv(attachment.path, EHECK_PATH);
-        ASVLOFFSCREEN inputImg = getImage(EHECK_PATH, attachment.width, attachment.height);
+        toYuv(attachment.path, CHECK_PATH);
+        ASVLOFFSCREEN inputImg = getImage(CHECK_PATH, attachment.width, attachment.height);
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            if(strlen((char *)faceModels.pbFeature) > 200) {
+            if (faceModels.lFeatureSize > 0) {
                 return 1;
             }
         }
@@ -374,17 +376,12 @@ extern "C" {
         strcat(paths, attachment.path);
         toYuv(paths, REGISTER_PATH);
         ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
-        
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
-        printf("人脸数量%d------------------------\n", faceResult->nFace);
-        printf("%d -- %d -- %d -- %d", faceResult->rcFace[0].top, faceResult->rcFace[0].right, faceResult->rcFace[0].left, faceResult->rcFace[0].bottom);
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            printf("人脸数据长度%d------------------------\n", (int)strlen((char *)faceModels.pbFeature));
-            char *base64 = (char *)malloc(faceModels.lFeatureSize);
+            char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
-            int result = addFaceModel(id, base64, faceModels.lFeatureSize, attachment.path, isActivte);
-            free(base64);
+            int result = addFaceModel(id, base64, faceModels.lFeatureSize, (char*)attachment.path, isActivte);
             return result;
         }
         return -1;
@@ -392,11 +389,14 @@ extern "C" {
     /**
      * 发送串口
      */
-    int writeFd() {
+    int writeFd(const int type) {
         // 发送串口
         if (fd > 0) {
+            char *buffer;
             printf("进入串口\n");
-            const char *buffer = "OPENDOOR2\r\n";
+            if (type == 0) {
+                buffer = (char*)"OPENDOOR1\r\n";
+            } else buffer = (char*)"OPENDOOR2\r\n";
             int result = writFd(fd, buffer);
             if (result == -1) {
                 printf("写入串口失败\n");
@@ -409,40 +409,41 @@ extern "C" {
     /**
      * 更新第二张人脸图片
      */
-    int updateSecondFaceModel(const int id, const int recordId) {
+    int updateSecondFaceModel(const int peopleId, const int recordId) {
         MFloat score = 0.00f;
         const char* path = getRecordImage(recordId, &score);
         if (path == "fail") return -1;
-        toYuv(path, UPDATE_PATH);
+        char paths[300];
+        strcpy(paths, ROOTPATH);
+        strcat(paths, path);
+        toYuv(paths, UPDATE_PATH);
         ASVLOFFSCREEN inputImg = getImage(UPDATE_PATH, INPUT_IMAGE_WIDTH, INPUT_IMAGE_HEIGHT);
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            char *base64 = (char *)malloc(800);
+            char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
-            int result = updateFaceModel(id, base64, path, score, faceModels.lFeatureSize, 1);
-            free(base64);
+            int result = updateFaceModel(peopleId, base64, path, score, faceModels.lFeatureSize, 1);
             return result;
         }
         return -1;
     }
 }   
 
-int main(int argc, char* argv[]) {
+// int main(int argc, char* argv[]) {
 
-    initAllEngine();
-    writeFd();
-    // int result = openCamera(0);
-    // //addModel(2, 72, 1);
-    // while(swith) {
-    //     // if (!swith) {
-    //     //     freeOneCamera(0);
-    //     // }
-    // }
-    freeAllEngine();
-    return 0;
-}
+//     initAllEngine();
+//     // writeFd();
+//     int result = openCamera(0);
+//     while(swith) {
+//         // if (!swith) {
+//         //     freeOneCamera(0);
+//         // }
+//     }
+//     freeAllEngine();
+//     return 0;
+// }
 // g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/yanglin/yl/c++/arcsoft-arcface/arcface/lib/linux_x64 -I/home/yanglin/yl/c++/arcsoft-arcface/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -shared -o libface.so
 
 
