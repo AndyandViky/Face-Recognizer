@@ -72,9 +72,8 @@ int checkUpdate() {
         result = mysql_store_result(&mysql);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
-                if(strcmp(row[0], "1") == 1) {
-                    return 1;
-                }
+                int type = atoi(row[0]);
+                return type;
             }
             mysql_free_result(result);
         }
@@ -86,56 +85,73 @@ int checkUpdate() {
 
 // 全局缓存
 static FaceModelResult *models = (FaceModelResult*)malloc(faceModelLength);
-static int cnt = 0;
+// static int cnt = 0;
+static int modelCount = 0;
+
+static int updateLimit = 0; // 计时器锁
+
+// 暂存更新状态计时器
+void save_update(int sig)    
+{  
+    updateLimit = 0;
+}  
 /**
  * 清空模型数组
  */
-void freeModels() {
-    for(int i = 0; i < 237; i++) {
-        if (models[i].faceData) {
-            free(models[i].faceData);
-        }
-    }
-    memset(models, 0, faceModelLength);
-}
+// void freeModels() {
+//     for(int i = 0; i < 237; i++) {
+//         if (models[i].faceData) {
+//             free(models[i].faceData);
+//         }
+//     }
+//     memset(models, 0, faceModelLength);
+// }
 
 /**
  * 获取人脸数据信息
  */
-FaceModelResult* getFaceModel(int *len) {
-    int cnt = checkUpdate();
-    if(cnt == 1) {
-
+FaceModelResult* getFaceModel(int *len, int pageNo) {
+    int cnt = 0;
+    if (updateLimit == 0) {
+        cnt = checkUpdate();
+        updateLimit = 1;
+    } else {
+        if (updateLimit == 1) {
+            updateLimit = 2;
+            // 时间锁为关闭状态
+            signal(SIGALRM, save_update);  //后面的函数必须是带int参数的
+            alarm(5); // 5秒之后查询数据库
+        }
+    }
+    if (cnt == 1){
+        char i_query[1000];
         MYSQL_RES *result; //保存结果
         MYSQL_ROW row; // 代表的是结果集中的一行
-        const char *i_query = "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1";
-        if(mysql_query(&mysql, i_query) == 0) {
-            result = mysql_store_result(&mysql);
-            if(result) {
-                int count = 0;
-                while((row = mysql_fetch_row(result)) != NULL) {
-                    models[count].userId = atoi(row[2]);
-                    models[count].id = atoi(row[3]);
-                    models[count].dataSize = atoi(row[1]);
-                    models[count].gender = atoi(row[4]);
-                    models[count].age = atoi(row[5]);
-                    models[count].passCount = atoi(row[6]);
-                    models[count].semblance = atof(row[7]);
-                    char dedata[models[count].dataSize];
-                    base64_decode(row[0], (unsigned char*)dedata);
-                    models[count].faceData = (MByte*)malloc(models[count].dataSize);
-                    for(int k=0;k<models[count].dataSize; k++) {
-                        models[count].faceData[k] = dedata[k];
-                    }  
-                    count++;
+        for(int i=0; i<1; i++) {
+            sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 order by id DESC limit %d, %d", 80*i, 80);
+            if(mysql_query(&mysql, i_query) == 0) {
+                result = mysql_store_result(&mysql);
+                if(result) {
+                    while((row = mysql_fetch_row(result)) != NULL) {
+                        models[modelCount].userId = atoi(row[2]);
+                        models[modelCount].id = atoi(row[3]);
+                        models[modelCount].dataSize = atoi(row[1]);
+                        models[modelCount].gender = atoi(row[4]);
+                        models[modelCount].age = atoi(row[5]);
+                        models[modelCount].passCount = atoi(row[6]);
+                        models[modelCount].semblance = atof(row[7]);
+                        models[modelCount].faceData = (MByte*)malloc(models[modelCount].dataSize);
+                        base64_decode(row[0], (unsigned char*)models[modelCount].faceData);
+                        modelCount++;
+                    }
+                    mysql_free_result(result);
                 }
-                *len = count;
             }
         }
-        // 获取之后更新
-        const char *u_query = "update config set isUpdate=0 where id=1";
-        mysql_query(&mysql, u_query);
+        sprintf(i_query, "update config set isUpdate=0 where id=1");
+        mysql_query(&mysql, i_query);
     }
+    *len = modelCount;
     return models;
 }
 
@@ -244,7 +260,7 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
                 printf("更新失败%s\n", mysql_error(sock));
                 return -1;
             }
-        } 
+        }
     }
     return -1;
 }
@@ -269,4 +285,37 @@ char* getRecordImage(const int id, MFloat *score) {
     }
     char *fail = (char*)"fail";
     return fail;
+}
+
+/**
+ * 根据id获取人脸数据
+ */
+FaceModelResult* faceDataTest(const int id, int *len) {
+    FaceModelResult *textModel = (FaceModelResult*)malloc(3);
+    char i_query[1000];
+    MYSQL_RES *result; //保存结果
+    MYSQL_ROW row; // 代表的是结果集中的一行
+    sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 and people_id=%d", id);
+    if(mysql_query(&mysql, i_query) == 0) {
+        result = mysql_store_result(&mysql);
+        int testCount = 0;
+        if(result) {
+            while((row = mysql_fetch_row(result)) != NULL) {
+                printf("找到数据  %d\n", testCount);
+                textModel[testCount].userId = atoi(row[2]);
+                textModel[testCount].id = atoi(row[3]);
+                textModel[testCount].dataSize = atoi(row[1]);
+                textModel[testCount].gender = atoi(row[4]);
+                textModel[testCount].age = atoi(row[5]);
+                textModel[testCount].passCount = atoi(row[6]);
+                textModel[testCount].semblance = atof(row[7]);
+                textModel[testCount].faceData = (MByte*)malloc(textModel[testCount].dataSize);
+                base64_decode(row[0], (unsigned char*)textModel[testCount].faceData);
+                testCount++;
+            }
+            *len = testCount;
+            mysql_free_result(result);
+        }
+    }
+    return textModel;
 }

@@ -46,7 +46,7 @@ void *_checkFace(void *arg) {
     MBool isSuccess = false; // 判断此次循环是否开门成功
     struct timeval tv;
     long int times;
-    char *base64 = (char *)malloc(22020);
+    char *base64 = (char *)malloc(30000);
     char *buffer;
 
     // 此处标记： 查询当前处理摄像头状态 开始循环
@@ -119,6 +119,7 @@ void *_checkFace(void *arg) {
 
         // 如果 暂存的人脸数长时间不变动 并且 时间锁为关闭状态
         if (saveCount != 0 && !timeLimit) {
+            printf("=======\n");
             timeLimit = true;
             signal(SIGALRM, save_count_fn);  //后面的函数必须是带int参数的
             alarm(10); // 10秒之后刷新暂存人脸数
@@ -129,9 +130,9 @@ void *_checkFace(void *arg) {
          */
         MFloat total = 0.00f;
         int len, k, i;
-        FaceModelResult *models = getFaceModel(&len);
+        FaceModelResult *models = getFaceModel(&len, 0);
         for (i = 0; i < faceResult->nFace; i++) {
-            if (isSuccess) break; // 判断是否成功, 成功结束循环
+            if (isSuccess || len<=0) break; // 判断是否成功, 成功结束循环
 
             // 进入循环前需要将当前的人脸信息读取出来
             int orient = faceResult->lfaceOrient[i];
@@ -145,11 +146,20 @@ void *_checkFace(void *arg) {
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
             // int age = checkAge(inputImg, faceResult->rcFace[i], orient);
             MBool isChangeGender = false;
-            for(k=0; k<len; k++) {
+            for(k=0; k<=len; k++) {
+                // 此处判断是否处于当前循环的最后一组
+                if (k == len && gender != -1 && !isChangeGender) {
+                    len--;
+                    isChangeGender = true;
+                    k=0;
+                    if (gender == 0) gender = 1;
+                    else gender = 0;
+                }
                 if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
                 if(result == -1)  continue;
                 if(result > 0.60) {
+                    printf("识别成功!---%f\n", result);
                     // 此处更新数据库，记录当前开门者及其类别
                     gettimeofday(&tv,NULL);
                     times = tv.tv_sec*1000000 + tv.tv_usec;
@@ -181,12 +191,6 @@ void *_checkFace(void *arg) {
                     writFd(fd, buffer);
                     isSuccess = true;
                     break;
-                }
-                // 此处判断是否处于当前循环的最后一组
-                if (k == len-1 && gender != -1 && !isChangeGender) {
-                    isChangeGender = true;
-                    k=0;
-                    gender == 0 ? 1 : 0;
                 }
             }
             if (faceModels.pbFeature) {
@@ -235,6 +239,7 @@ int checkFace() {
     return ret;
 }
 
+static int camera1=0, camera2=0;
 /**
  * 打开摄像头未封装版本
  */
@@ -243,22 +248,33 @@ void *_openCamera(void *arg) {
     threadIndex++;
     int cameraIndex = boxIndex;
     int camera = cameraBox[cameraIndex].cameraNum;
+
     CvCapture* cam = cvCaptureFromCAM(camera);
+    CvCapture *capture = cvCreateFileCapture("/home/yanglin/视频/123344.mp4"); 
+    if(!capture) {
+        printf("Could not initialize opening of Camera %d..\n", camera);
+    }
     if(!cam) {
         printf("Could not initialize opening of Camera %d..\n", camera);
     } else {
         boxIndex++;
         cameraBox[cameraIndex].isOpen = true;
-        cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE); // create a window called "Camera"
+        char windowName[20];
+        sprintf(windowName, "%d", camera);
+        cvNamedWindow(windowName, CV_WINDOW_AUTOSIZE); // create a window called "Camera"
 
         if(getOpenCameraCount()%2 != 0) {
             // 此处说明出现基数次的摄像头, 需要新开辟一个线程处理摄像头数据
             checkFace();
         }
         while(checkCameraType(camera) == 1) {
+            IplImage *images = cvQueryFrame(capture);
             cameraBox[cameraIndex].cam0Frame = cvQueryFrame(cam);
             if (cameraBox[cameraIndex].cam0Frame) {
-                cvShowImage("Camera", cameraBox[cameraIndex].cam0Frame);
+                if (camera1 == 1) {
+                    cvShowImage(windowName, cameraBox[cameraIndex].cam0Frame);
+                }
+                if(camera2 == 1) cvShowImage("2", images);
             }
             if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
             {
@@ -267,10 +283,11 @@ void *_openCamera(void *arg) {
                 break;
             }
         }
-        cvDestroyWindow("Camera");
+        cvDestroyWindow(windowName);
         cameraBox[cameraIndex].cam0Frame = {0};
         cvReleaseCapture(&cam);
     }
+
     pthread_join(cameraID, NULL);
     printf("关闭摄像头线程成功\n");
 }
@@ -310,15 +327,19 @@ extern "C" {
     char* getAllCameraInfo() {
         char *result = (char*)malloc(1000);
         sprintf(result, "[");
+        char instead[100];
         for(int i = 0; i < boxIndex; i++) {
             if(cameraBox[i].isOpen) {
                 if (i==boxIndex-1) {
-                    sprintf(result, "{name: %d, isOpen: %ld, isOperate: %ld}", cameraBox[i].cameraNum, cameraBox[i].isOpen, cameraBox[i].isOperated);
+                    sprintf(instead, "{\"name\": %d, \"isOpen\": %ld, \"isOperated\": %ld}", cameraBox[i].cameraNum, cameraBox[i].isOpen, cameraBox[i].isOperated);
+                    strcat(result, instead);
                 } else {
-                    sprintf(result, "{name: %d, isOpen: %ld, isOperate: %ld},", cameraBox[i].cameraNum, cameraBox[i].isOpen, cameraBox[i].isOperated);
+                    sprintf(instead, "{\"name\": %d, \"isOpen\": %ld, \"isOperated\": %ld},", cameraBox[i].cameraNum, cameraBox[i].isOpen, cameraBox[i].isOperated);
+                    strcat(result, instead);
                 }
             }
         }
+        strcat(result, "]");
         return result;
     }
 
@@ -337,14 +358,19 @@ extern "C" {
      * 打开摄像头
      */
     int openCamera(int type) {
-        cameraBox[boxIndex].cameraNum = type;  
-        printf("开启摄像头线程成功\n");
-        int ret = pthread_create(&threadId[threadIndex], NULL, _openCamera, NULL);
-        if(ret!=0){
-            printf ("Create pthread error!\n"); 
-            return -1;
+        if (type == 0) camera2 = 1;
+        else {
+            camera1 = 1;
+            cameraBox[boxIndex].cameraNum = type;  
+            printf("开启摄像头线程成功\n");
+            int ret = pthread_create(&threadId[threadIndex], NULL, _openCamera, NULL);
+            if(ret!=0){
+                printf ("Create pthread error!\n"); 
+                return -1;
+            }
+            return ret;
         }
-        return ret;
+        return 1;
     }
     /**
      * 根据图片获取人脸特征数据
@@ -371,6 +397,7 @@ extern "C" {
     int addModel(const int id, const int imageId, const int isActivte) {
         Attachment attachment =  getAttachment(imageId);
         if (strlen(attachment.path) <= 0) return -1;
+        printf("进入检测\n");
         char paths[300];
         strcpy(paths, ROOTPATH);
         strcat(paths, attachment.path);
@@ -378,7 +405,9 @@ extern "C" {
         ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
-            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+            printf("检测到人脸\n");
+            printf("人脸数量为==%d\n", faceResult->nFace);
+            AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
             char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
             int result = addFaceModel(id, base64, faceModels.lFeatureSize, (char*)attachment.path, isActivte);
@@ -421,7 +450,7 @@ extern "C" {
         
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
-            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+            AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
             char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
             int result = updateFaceModel(peopleId, base64, path, score, faceModels.lFeatureSize, 1);
@@ -429,21 +458,76 @@ extern "C" {
         }
         return -1;
     }
+
+    /**
+     * 跨年龄测试
+     */
+    void ageText(const int people_id, const int attachmentId, float *fresult) {
+        Attachment attachment =  getAttachment(attachmentId);
+        if (strlen(attachment.path) <= 0) *fresult = 0.0f;
+        else {
+            printf("进入检测\n");
+            char paths[300];
+            strcpy(paths, ROOTPATH);
+            strcat(paths, attachment.path);
+            toYuv(paths, REGISTER_PATH);
+            ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
+            LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+            if(faceResult != NULL && faceResult->nFace == 1){
+                printf("检测到人脸\n");
+                printf("人脸数量为==%d\n", faceResult->nFace);
+                AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+                int len;
+                FaceModelResult *model = faceDataTest(people_id, &len);
+                MFloat result, max=0.0f;
+                int index = 0;
+                for(int i=0; i<len; i++) {
+                    printf("正在检测 %d\n", i);
+                    result = compareFace(faceModels, model[i]);
+                    printf("相似度为: %f\n", result);
+                    if (max<result) {
+                        max = result;
+                        index = i;
+                    }
+                }
+                updateFaceData(model[index].id, max, model[index].passCount+1);
+                insertRecord(model[index].userId, faceResult->nFace, (char*)attachment.path, result);
+                char base64[30000];
+                base64_encode(faceModels.pbFeature, base64);
+                // printf("相似度极高, 更新图片\n");
+                updateFaceModel(model[index].userId, base64, attachment.path, max, faceModels.lFeatureSize, 2);
+                
+                // if (max > 0.7) {
+                //     char base64[30000];
+                //     base64_encode(faceModels.pbFeature, base64);
+                //     printf("相似度极高, 更新图片\n");
+                //     updateFaceModel(model[index].userId, base64, attachment.path, max, faceModels.lFeatureSize, 2);
+                // }
+                *fresult = (float)max;
+            }
+        }
+    }
 }   
 
-// int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 
-//     initAllEngine();
-//     // writeFd();
-//     int result = openCamera(0);
-//     while(swith) {
-//         // if (!swith) {
-//         //     freeOneCamera(0);
-//         // }
-//     }
-//     freeAllEngine();
-//     return 0;
-// }
+    initAllEngine();
+    // writeFd(0);
+    // addModel(2, 171, 0);
+    // float result;
+    // ageText(595, 607, &result);
+    // printf("%f\n", result);
+    // int result = openCamera(0);
+    openCamera(0);
+    openCamera(1);
+    while(swith) {
+        // if (!swith) {
+        //     freeOneCamera(0);
+        // }
+    }
+    freeAllEngine();
+    return 0;
+}
 // g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/yanglin/yl/c++/arcsoft-arcface/arcface/lib/linux_x64 -I/home/yanglin/yl/c++/arcsoft-arcface/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -shared -o libface.so
 
 
