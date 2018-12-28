@@ -16,8 +16,8 @@ void freeAllEngine() {
     freeFaceDEngine();
     freeAgeEngine();
     freeGenderEngine();
-    freeMysql();
-    closeFd();
+    // freeMysql();
+    // closeFd();
 }
 
 MBool swith = true;
@@ -248,12 +248,11 @@ void *_openCamera(void *arg) {
     threadIndex++;
     int cameraIndex = boxIndex;
     int camera = cameraBox[cameraIndex].cameraNum;
-
     CvCapture* cam = cvCaptureFromCAM(camera);
-    CvCapture *capture = cvCreateFileCapture("/home/yanglin/视频/123344.mp4"); 
-    if(!capture) {
-        printf("Could not initialize opening of Camera %d..\n", camera);
-    }
+    // CvCapture *capture = cvCreateFileCapture("/home/yanglin/视频/123344.mp4"); 
+    // if(!capture) {
+    //     printf("Could not initialize opening of Camera %d..\n", camera);
+    // }
     if(!cam) {
         printf("Could not initialize opening of Camera %d..\n", camera);
     } else {
@@ -265,16 +264,16 @@ void *_openCamera(void *arg) {
 
         if(getOpenCameraCount()%2 != 0) {
             // 此处说明出现基数次的摄像头, 需要新开辟一个线程处理摄像头数据
-            checkFace();
+            // checkFace();
         }
         while(checkCameraType(camera) == 1) {
-            IplImage *images = cvQueryFrame(capture);
+            //IplImage *images = cvQueryFrame(capture);
             cameraBox[cameraIndex].cam0Frame = cvQueryFrame(cam);
             if (cameraBox[cameraIndex].cam0Frame) {
                 if (camera1 == 1) {
                     cvShowImage(windowName, cameraBox[cameraIndex].cam0Frame);
                 }
-                if(camera2 == 1) cvShowImage("2", images);
+                // if(camera2 == 1) cvShowImage("2", images);
             }
             if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
             {
@@ -303,8 +302,8 @@ extern "C" {
         initialFaceREngine();
         initialAgeEngine();
         initialGenderEngine();
-        openFd(&fd, fdPath);
-        set_serial(fd, nSpeed, nBits, nEvent, nStop);
+        // openFd(&fd, fdPath); 打開串口
+        // set_serial(fd, nSpeed, nBits, nEvent, nStop);
     }
     /**
      * 关闭一台摄像头
@@ -358,7 +357,7 @@ extern "C" {
      * 打开摄像头
      */
     int openCamera(int type) {
-        if (type == 0) camera2 = 1;
+        if (type == 1) camera2 = 1;
         else {
             camera1 = 1;
             cameraBox[boxIndex].cameraNum = type;  
@@ -519,17 +518,18 @@ int main(int argc, char* argv[]) {
     // printf("%f\n", result);
     // int result = openCamera(0);
     openCamera(0);
-    openCamera(1);
+    // openCamera(1);
+
     while(swith) {
-        // if (!swith) {
-        //     freeOneCamera(0);
-        // }
+        if (!swith) {
+            break;
+        }
     }
     freeAllEngine();
     return 0;
 }
-// g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/yanglin/yl/c++/arcsoft-arcface/arcface/lib/linux_x64 -I/home/yanglin/yl/c++/arcsoft-arcface/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -shared -o libface.so
+// g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/桌面/arcface/lib/linux_x64 -I/home/andy/桌面/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -shared -o libface.so
 
+// sudo apt install libmysqlclient-dev  安装mysql c支持库
 
-
-
+// git clone https://github.com/redis/hiredis.git   make, make install 安装hiredis
