@@ -16,7 +16,7 @@ void freeAllEngine() {
     freeFaceDEngine();
     freeAgeEngine();
     freeGenderEngine();
-    // freeMysql();
+    freeMysql();
     // closeFd();
 }
 
@@ -167,10 +167,10 @@ void *_checkFace(void *arg) {
                     sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", models[k].userId, times);
                     if (currentIndex == cBox[0]) {
                         // 1
-                        cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
+                        // cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
                     } else {
                         // 0
-                        cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
+                        // cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
                     }
                     char iPath1[100];
                     strncpy(iPath1, path+46, strlen(path)-46);
@@ -185,10 +185,10 @@ void *_checkFace(void *arg) {
                         updateFaceModel(models[k].userId, base64, path, result, faceModels.lFeatureSize, 2);
                     }
                     // 发送串口
-                    if (currentIndex == 0) {
-                        buffer = (char*)"OPENDOOR2\r\n";
-                    } else buffer = (char*)"OPENDOOR1\r\n";
-                    writFd(fd, buffer);
+                    // if (currentIndex == 0) {
+                    //     buffer = (char*)"OPENDOOR2\r\n";
+                    // } else buffer = (char*)"OPENDOOR1\r\n";
+                    // writFd(fd, buffer);
                     isSuccess = true;
                     break;
                 }
@@ -207,11 +207,11 @@ void *_checkFace(void *arg) {
             if (currentIndex == cBox[0]) {
                 // 1
                 sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
-                cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
+                // cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
             } else {
                 // 0
-                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);;
-                cvSaveImage(paths , cameraBox[cBox[0]].cam0Frame);
+                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);;
+                // cvSaveImage(paths , cameraBox[cBox[0]].cam0Frame);
             }
             char iPath2[100];
             strncpy(iPath2, paths+46, strlen(paths)-46);
@@ -264,7 +264,7 @@ void *_openCamera(void *arg) {
 
         if(getOpenCameraCount()%2 != 0) {
             // 此处说明出现基数次的摄像头, 需要新开辟一个线程处理摄像头数据
-            // checkFace();
+            checkFace();
         }
         while(checkCameraType(camera) == 1) {
             //IplImage *images = cvQueryFrame(capture);
@@ -426,11 +426,7 @@ extern "C" {
                 buffer = (char*)"OPENDOOR1\r\n";
             } else buffer = (char*)"OPENDOOR2\r\n";
             int result = writFd(fd, buffer);
-            if (result == -1) {
-                printf("写入串口失败\n");
-                return -1;
-            }
-            return 1;
+            return result;
         }
         return -1;
     }
@@ -528,7 +524,7 @@ int main(int argc, char* argv[]) {
     freeAllEngine();
     return 0;
 }
-// g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/桌面/arcface/lib/linux_x64 -I/home/andy/桌面/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -shared -o libface.so
+// g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/workspace/arcface/lib/linux_x64 -I/home/andy/workspace/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -shared -o libface.so
 
 // sudo apt install libmysqlclient-dev  安装mysql c支持库
 

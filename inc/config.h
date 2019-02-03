@@ -1,15 +1,14 @@
-#define APPID "GbiFvjqzJQPLGvjFAXjAZ2CwmA5bEnSbvPN1oHfdP6vY"
-#define SDKKEYD "F3ZDFYTgw71JX34j7PNHDSbt2nmkLUsevguxtztikbws"
-#define SDKKEYR "F3ZDFYTgw71JX34j7PNHDScNgPpSUVk7hh2GyHMaFTHW"
-#define SDKKEYT "F3ZDFYTgw71JX34j7PNHDSbksPWXKXBZE4XdzA3256ky"
-#define SDKKEYA "F3ZDFYTgw71JX34j7PNHDScd1CLmdrGDrehMWggXnusB"
-#define SDKKEYG "F3ZDFYTgw71JX34j7PNHDSckAbbsp6ukhYAWwf9fDSgb"
+#define APPID "GbiFvjqzJQPLGvjFAXjAZ2D4vZLnqA8exPYyZHQCTHaq"
+#define SDKKEYD "3NC7uc9Qi4QJCQdmVuQ7tphJB33yo4Mpt2Nu4urbs4td"
+#define SDKKEYR "3NC7uc9Qi4QJCQdmVuQ7tphnpe6gGgbFwjtwyMsPdkJE"
+#define SDKKEYT "3NC7uc9Qi4QJCQdmVuQ7tphB1dnopkK6ycZ8nbPgs3kF"
+#define SDKKEYA "3NC7uc9Qi4QJCQdmVuQ7tpi39SczpmJoiR94yufvmEwN"
+#define SDKKEYG "3NC7uc9Qi4QJCQdmVuQ7tpiAJqt95HmzywNLEx9zQwUE"
 
 #define WORKBUF_SIZE  (50*1024*1024)
-
-#define REGISTER_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/register.yuv"
-#define CHECK_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/check.yuv"
-#define UPDATE_PATH "/home/yanglin/yl/c++/arcsoft-arcface/arcface/recognitionImage/secondImage.yuv"
+#define REGISTER_PATH "/home/andy/workspace/arcface/recognitionImage/register.yuv"
+#define CHECK_PATH "/home/andy/workspace/arcface/recognitionImage/check.yuv"
+#define UPDATE_PATH "/home/andy/workspace/arcface/recognitionImage/secondImage.yuv"
 
 /**
  * 图像比较参数
@@ -18,7 +17,7 @@
 #define INPUT_IMAGE_WIDTH   (640)
 #define INPUT_IMAGE_HEIGHT  (480)
 
-char ROOTPATH[100] =  "/home/yanglin/yl/c++/arcsoft-arcface/face-api/";
+char ROOTPATH[100] =  "/home/andy/workspace/arcface/";
 // 全局定义箱子长度
 const int boxLength = 100;
 // 全局摄像头箱子
@@ -36,7 +35,7 @@ static pthread_t threadId[boxLength];
 static int threadIndex = 0;
 
 // 全局定义mysql配置信息
-const char *server = "localhost";
+const char *server = "192.168.118.1";
 const char *user = "root";
 const char *password = "888888";//“******”为你设置的密码
 const unsigned int port = 3306;
