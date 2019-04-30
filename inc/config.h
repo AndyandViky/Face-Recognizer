@@ -28,7 +28,7 @@ static int boxIndex = 0;
 static MBool boxLock = false;
 
 // 全局定义人脸模型长度
-const int faceModelLength = 1000;
+const int faceModelLength = 30000;
 
 // 全局定义线程池
 static pthread_t threadId[boxLength];

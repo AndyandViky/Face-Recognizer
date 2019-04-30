@@ -85,73 +85,71 @@ int checkUpdate() {
 
 // 全局缓存
 static FaceModelResult *models = (FaceModelResult*)malloc(faceModelLength);
-// static int cnt = 0;
 static int modelCount = 0;
 
-static int updateLimit = 0; // 计时器锁
-
-// 暂存更新状态计时器
-void save_update(int sig)    
-{  
-    updateLimit = 0;
-}  
 /**
  * 清空模型数组
  */
-// void freeModels() {
-//     for(int i = 0; i < 237; i++) {
-//         if (models[i].faceData) {
-//             free(models[i].faceData);
-//         }
-//     }
-//     memset(models, 0, faceModelLength);
-// }
+void freeModels() {
+    for(int i = 0; i < modelCount; i++) {
+        if (models[i].faceData) {
+            free(models[i].faceData);
+        }
+    }
+    memset(models, 0, faceModelLength);
+}
+
+/**
+ * 获取人脸模型封装版本
+ */
+int limitSize = 100;
+FaceModelResult* _getFaceModel(int pageNo) {
+    char i_query[1000];
+    MYSQL_RES *result; //保存结果
+    MYSQL_ROW row; // 代表的是结果集中的一行
+    sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 order by id DESC limit %d, %d", pageNo*limitSize,limitSize);
+    if(mysql_query(&mysql, i_query) == 0) {
+        result = mysql_store_result(&mysql);
+        if(result) {
+            while((row = mysql_fetch_row(result)) != NULL) {
+                models[modelCount].userId = atoi(row[2]);
+                models[modelCount].id = atoi(row[3]);
+                models[modelCount].dataSize = atoi(row[1]);
+                models[modelCount].gender = atoi(row[4]);
+                models[modelCount].age = atoi(row[5]);
+                models[modelCount].passCount = atoi(row[6]);
+                models[modelCount].semblance = atof(row[7]);
+                models[modelCount].faceData = (MByte*)malloc(models[modelCount].dataSize);
+                base64_decode(row[0], (unsigned char*)models[modelCount].faceData);
+                modelCount++;
+            }
+            mysql_free_result(result);
+        }
+    }
+    return models;
+}
+
+int getFaceCount() {
+    return 500;
+}
 
 /**
  * 获取人脸数据信息
  */
 FaceModelResult* getFaceModel(int *len, int pageNo) {
-    int cnt = 0;
-    if (updateLimit == 0) {
-        cnt = checkUpdate();
-        updateLimit = 1;
-    } else {
-        if (updateLimit == 1) {
-            updateLimit = 2;
-            // 时间锁为关闭状态
-            signal(SIGALRM, save_update);  //后面的函数必须是带int参数的
-            alarm(5); // 5秒之后查询数据库
-        }
-    }
+    int cnt = checkUpdate();
     if (cnt == 1){
-        char i_query[1000];
-        MYSQL_RES *result; //保存结果
-        MYSQL_ROW row; // 代表的是结果集中的一行
-        for(int i=0; i<1; i++) {
-            sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 order by id DESC limit %d, %d", 80*i, 80);
-            if(mysql_query(&mysql, i_query) == 0) {
-                result = mysql_store_result(&mysql);
-                if(result) {
-                    while((row = mysql_fetch_row(result)) != NULL) {
-                        models[modelCount].userId = atoi(row[2]);
-                        models[modelCount].id = atoi(row[3]);
-                        models[modelCount].dataSize = atoi(row[1]);
-                        models[modelCount].gender = atoi(row[4]);
-                        models[modelCount].age = atoi(row[5]);
-                        models[modelCount].passCount = atoi(row[6]);
-                        models[modelCount].semblance = atof(row[7]);
-                        models[modelCount].faceData = (MByte*)malloc(models[modelCount].dataSize);
-                        base64_decode(row[0], (unsigned char*)models[modelCount].faceData);
-                        modelCount++;
-                    }
-                    mysql_free_result(result);
-                }
-            }
+        modelCount = 0;
+        int faceCount = getFaceCount();
+        for(int i=0; i<faceCount/limitSize+1; i++) {
+            _getFaceModel(i);
         }
+        printf("获取成功！总共%d条数据\n", modelCount);
+        *len = modelCount;
+        char i_query[1000];
         sprintf(i_query, "update config set isUpdate=0 where id=1");
         mysql_query(&mysql, i_query);
     }
-    *len = modelCount;
     return models;
 }
 
@@ -255,6 +253,7 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
             // 替换数据
             sprintf(u_query, "update face_data set model_data='%s', semblance=%f, model_image='%s' where people_id=%d and type=%d", model, similScore, path, id, type);
             if(mysql_query(&mysql, u_query) == 0) {
+                printf("相似度极高更新成功！\n");
                 return 1;
             } else {
                 printf("更新失败%s\n", mysql_error(sock));

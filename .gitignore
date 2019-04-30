@@ -1,4 +1,5 @@
 recognitionImage/
 lib/
 .DS_Store
+*.dat
 .vscode/

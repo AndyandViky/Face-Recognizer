@@ -12,11 +12,11 @@
  * 释放所有引擎内存
  */
 void freeAllEngine() {
+    freeMysql();
     freeFaceREngine();
     freeFaceDEngine();
     freeAgeEngine();
-    freeGenderEngine();
-    // freeMysql();
+    // freeGenderEngine();
     // closeFd();
 }
 
@@ -279,7 +279,7 @@ void *_openCamera(void *arg) {
             }
             if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
             {
-                // swith = false;
+                swith = false;
                 // cout << "Esc key is pressed by user" << endl;
                 break;
             }
@@ -304,7 +304,7 @@ extern "C" {
         initialFaceDEngine();
         initialFaceREngine();
         initialAgeEngine();
-        initialGenderEngine();
+        // initialGenderEngine();
         // openFd(&fd, fdPath); 打開串口
         // set_serial(fd, nSpeed, nBits, nEvent, nStop);
     }
