@@ -164,16 +164,16 @@ void *_checkFace(void *arg) {
                     gettimeofday(&tv,NULL);
                     times = tv.tv_sec*1000000 + tv.tv_usec;
                     char path[255];
-                    sprintf(path, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", models[k].userId, times);
+                    sprintf(path, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", models[k].userId, times);
                     if (currentIndex == cBox[0]) {
                         // 1
-                        // cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
+                        cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
                     } else {
                         // 0
-                        // cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
+                        cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
                     }
                     char iPath1[100];
-                    strncpy(iPath1, path+46, strlen(path)-46);
+                    strncpy(iPath1, path+9, strlen(path));
                     insertRecord(models[k].userId, faceResult->nFace, (char*)iPath1, result);
                     updateFaceData(models[k].id, result, models[k].passCount+1);
                     models[k].passCount++;
@@ -206,15 +206,15 @@ void *_checkFace(void *arg) {
             char paths[255];
             if (currentIndex == cBox[0]) {
                 // 1
-                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
-                // cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
+                sprintf(paths, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
+                cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
             } else {
                 // 0
-                sprintf(paths, "/home/yanglin/yl/c++/arcsoft-arcface/face-api/static/images/record/%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);;
-                // cvSaveImage(paths , cameraBox[cBox[0]].cam0Frame);
+                sprintf(paths, "/mnt/hgfs/static/images/record/6%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);
+                cvSaveImage(paths, cameraBox[cBox[0]].cam0Frame);
             }
             char iPath2[100];
-            strncpy(iPath2, paths+46, strlen(paths)-46);
+            strncpy(iPath2, paths+9, strlen(paths));
             insertRecord(-1, faceResult->nFace, (char*)iPath2, 0);
         }
     }
