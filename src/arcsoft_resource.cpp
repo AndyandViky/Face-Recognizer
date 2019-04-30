@@ -16,7 +16,7 @@ void freeAllEngine() {
     freeFaceDEngine();
     freeAgeEngine();
     freeGenderEngine();
-    freeMysql();
+    // freeMysql();
     // closeFd();
 }
 
@@ -158,8 +158,9 @@ void *_checkFace(void *arg) {
                 if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
                 if(result == -1)  continue;
+                // printf("识别率为!---%f\n", result);
                 if(result > 0.60) {
-                    printf("识别成功!---%f\n", result);
+                    // printf("识别成功!---%f\n", result);
                     // 此处更新数据库，记录当前开门者及其类别
                     gettimeofday(&tv,NULL);
                     times = tv.tv_sec*1000000 + tv.tv_usec;
@@ -173,7 +174,7 @@ void *_checkFace(void *arg) {
                         cvSaveImage(path , cameraBox[cBox[0]].cam0Frame);
                     }
                     char iPath1[100];
-                    strncpy(iPath1, path+9, strlen(path));
+                    strncpy(iPath1, path+10, strlen(path));
                     insertRecord(models[k].userId, faceResult->nFace, (char*)iPath1, result);
                     updateFaceData(models[k].id, result, models[k].passCount+1);
                     models[k].passCount++;
@@ -182,7 +183,7 @@ void *_checkFace(void *arg) {
                         // 相似度极高, 替换此模型
                         base64_encode(faceModels.pbFeature, base64);
                         printf("相似度极高\n");
-                        updateFaceModel(models[k].userId, base64, path, result, faceModels.lFeatureSize, 2);
+                        updateFaceModel(models[k].userId, base64, iPath1, result, faceModels.lFeatureSize, 2);
                     }
                     // 发送串口
                     // if (currentIndex == 0) {
@@ -210,15 +211,16 @@ void *_checkFace(void *arg) {
                 cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
             } else {
                 // 0
-                sprintf(paths, "/mnt/hgfs/static/images/record/6%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);
+                sprintf(paths, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);
                 cvSaveImage(paths, cameraBox[cBox[0]].cam0Frame);
             }
             char iPath2[100];
-            strncpy(iPath2, paths+9, strlen(paths));
+            strncpy(iPath2, paths+10, strlen(paths));
             insertRecord(-1, faceResult->nFace, (char*)iPath2, 0);
         }
     }
     free(base64);
+    freeModels();
     pthread_join(checkID, NULL);
     printf("关闭检测线程成功\n");
     if (checkAllCamera() == 0) {
@@ -277,13 +279,14 @@ void *_openCamera(void *arg) {
             }
             if (cvWaitKey(30) > 0) //wait for 'Esc' key press for 30ms. If 'Esc' key is pressed, break loop
             {
-                swith = false;
+                // swith = false;
                 // cout << "Esc key is pressed by user" << endl;
                 break;
             }
         }
         cvDestroyWindow(windowName);
         cameraBox[cameraIndex].cam0Frame = {0};
+        cameraBox[cameraIndex].isOpen = false;
         cvReleaseCapture(&cam);
     }
 
@@ -517,11 +520,8 @@ int main(int argc, char* argv[]) {
     // openCamera(1);
 
     while(swith) {
-        if (!swith) {
-            break;
-        }
     }
-    freeAllEngine();
+    // freeAllEngine();
     return 0;
 }
 // g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/workspace/arcface/lib/linux_x64 -I/home/andy/workspace/arcface/inc -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs -shared -o libface.so
