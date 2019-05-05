@@ -4,8 +4,8 @@ add_compile_options(-std=c++11)
 
 add_compile_options(-g)
 
-include_directories(/home/yanglin/yl/c++/arcsoft-arcface/arcface/inc)
-link_directories(/home/yanglin/yl/c++/arcsoft-arcface/arcface/lib/linux_x64 /usr/local/lib)
+include_directories(/home/andy/workspace/arcface/inc)
+link_directories(/home/andy/workspace/arcface/lib/linux_x64 /usr/local/lib)
 
 project (arcsoft_afd_cv)
 
