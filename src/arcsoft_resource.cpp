@@ -16,7 +16,7 @@ void freeAllEngine() {
     freeFaceREngine();
     freeFaceDEngine();
     freeAgeEngine();
-    // freeGenderEngine();
+    freeGenderEngine();
     // closeFd();
 }
 
@@ -144,7 +144,7 @@ void *_checkFace(void *arg) {
             }
             // 获取性别以及年龄
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
-            // int age = checkAge(inputImg, faceResult->rcFace[i], orient);
+            int age = checkAge(inputImg, faceResult->rcFace[i], orient);
             MBool isChangeGender = false;
             for(k=0; k<=len; k++) {
                 // 此处判断是否处于当前循环的最后一组
@@ -191,6 +191,10 @@ void *_checkFace(void *arg) {
                     // } else buffer = (char*)"OPENDOOR1\r\n";
                     // writFd(fd, buffer);
                     isSuccess = true;
+                    openVoice();
+                    printf("开门成功，延迟5秒\n");
+                    sleep(5); //延迟5秒
+                    printf("继续检测=======\n");
                     break;
                 }
             }
@@ -223,9 +227,9 @@ void *_checkFace(void *arg) {
     freeModels();
     pthread_join(checkID, NULL);
     printf("关闭检测线程成功\n");
-    if (checkAllCamera() == 0) {
-        freeAllEngine();
-    }
+    // if (checkAllCamera() == 0) {
+    //     freeAllEngine(); 
+    // }
 }
 
 /**
@@ -304,7 +308,7 @@ extern "C" {
         initialFaceDEngine();
         initialFaceREngine();
         initialAgeEngine();
-        // initialGenderEngine();
+        initialGenderEngine();
         // openFd(&fd, fdPath); 打開串口
         // set_serial(fd, nSpeed, nBits, nEvent, nStop);
     }
@@ -508,7 +512,6 @@ extern "C" {
 }   
 
 int main(int argc, char* argv[]) {
-
     initAllEngine();
     // writeFd(0);
     // addModel(2, 171, 0);
@@ -521,7 +524,7 @@ int main(int argc, char* argv[]) {
 
     while(swith) {
     }
-    // freeAllEngine();
+    freeAllEngine();
     return 0;
 }
 // g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/workspace/arcface/lib/linux_x64 -I/home/andy/workspace/arcface/inc -Iusr/include/opencv3 -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation $(pkg-config opencv --libs) -shared -o libface.so
