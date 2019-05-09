@@ -17,7 +17,7 @@
 #define INPUT_IMAGE_WIDTH   (640)
 #define INPUT_IMAGE_HEIGHT  (480)
 
-char ROOTPATH[100] =  "/home/andy/workspace/arcface/";
+char ROOTPATH[100] =  "/mnt/hgfs/";
 // 全局定义箱子长度
 const int boxLength = 100;
 // 全局摄像头箱子

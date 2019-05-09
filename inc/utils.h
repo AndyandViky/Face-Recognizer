@@ -148,7 +148,7 @@ char* replace_char(char *source, char s1, char s2)
  */
 void toYuv(const char* path, const char* target) {
     char cmdline[300];
-    sprintf(cmdline, "bash /home/yanglin/yl/c++/arcsoft-arcface/arcface/bash/changeImage.sh %s %s", path, target);
+    sprintf(cmdline, "bash /home/andy/workspace/arcface/bash/changeImage.sh %s %s", path, target);
     
     system(cmdline);
 }
