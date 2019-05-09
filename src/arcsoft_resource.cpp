@@ -129,10 +129,10 @@ void *_checkFace(void *arg) {
          * 获取模型数据, 开始识别
          */
         MFloat total = 0.00f;
-        int len, k, i;
-        FaceModelResult *models = getFaceModel(&len, 0);
+        int k, i, faceLen; // 特征脸数据量
+        FaceModelResult *models = getFaceModel(&faceLen);
         for (i = 0; i < faceResult->nFace; i++) {
-            if (isSuccess || len<=0) break; // 判断是否成功, 成功结束循环
+            if (isSuccess || faceLen<=0) break; // 判断是否成功, 成功结束循环
 
             // 进入循环前需要将当前的人脸信息读取出来
             int orient = faceResult->lfaceOrient[i];
@@ -146,10 +146,10 @@ void *_checkFace(void *arg) {
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
             int age = checkAge(inputImg, faceResult->rcFace[i], orient);
             MBool isChangeGender = false;
-            for(k=0; k<=len; k++) {
+            for(k=0; k<=faceLen; k++) {
                 // 此处判断是否处于当前循环的最后一组
-                if (k == len && gender != -1 && !isChangeGender) {
-                    len--;
+                if (k == faceLen && gender != -1 && !isChangeGender) {
+                    faceLen--;
                     isChangeGender = true;
                     k=0;
                     if (gender == 0) gender = 1;
@@ -158,7 +158,6 @@ void *_checkFace(void *arg) {
                 if (gender != -1 && gender != models[k].gender) continue; // 首先匹配检测出来的性别
                 MFloat result = compareFace(faceModels, models[k]);
                 if(result == -1)  continue;
-                // printf("识别率为!---%f\n", result);
                 if(result > 0.60) {
                     // printf("识别成功!---%f\n", result);
                     // 此处更新数据库，记录当前开门者及其类别
@@ -190,6 +189,7 @@ void *_checkFace(void *arg) {
                     //     buffer = (char*)"OPENDOOR2\r\n";
                     // } else buffer = (char*)"OPENDOOR1\r\n";
                     // writFd(fd, buffer);
+
                     isSuccess = true;
                     openVoice();
                     printf("开门成功，延迟5秒\n");
@@ -224,7 +224,7 @@ void *_checkFace(void *arg) {
         }
     }
     free(base64);
-    freeModels();
+    // freeModels();
     pthread_join(checkID, NULL);
     printf("关闭检测线程成功\n");
     // if (checkAllCamera() == 0) {

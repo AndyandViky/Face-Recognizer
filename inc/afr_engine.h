@@ -96,15 +96,17 @@ AFR_FSDK_FACEMODEL getNewFeature(ASVLOFFSCREEN inputImg, MRECT face, AFD_FSDK_Or
  */
 MFloat compareFace(AFR_FSDK_FACEMODEL faceModels1, FaceModelResult data) {
 
+    if(data.dataSize != 22020) return -1;
+    MFloat  fSimilScore = 0.0f;
     AFR_FSDK_FACEMODEL faceModels2 = { 0 };
     {
         faceModels2.lFeatureSize = (MInt32)data.dataSize;
         faceModels2.pbFeature = (MByte*)malloc(faceModels2.lFeatureSize);
         memcpy(faceModels2.pbFeature, data.faceData, data.dataSize);
     }
-    MFloat  fSimilScore = 0.0f;
     int ret = AFR_FSDK_FacePairMatching(hEngineR, &faceModels1, &faceModels2, &fSimilScore);
     free(faceModels2.pbFeature);
+    faceModels2.pbFeature = NULL;
     return fSimilScore;
 }
 

@@ -104,7 +104,7 @@ void freeModels() {
  */
 int limitSize = 100;
 FaceModelResult* _getFaceModel(int pageNo) {
-    char i_query[1000];
+    char i_query[300];
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 order by id DESC limit %d, %d", pageNo*limitSize,limitSize);
@@ -112,16 +112,20 @@ FaceModelResult* _getFaceModel(int pageNo) {
         result = mysql_store_result(&mysql);
         if(result) {
             while((row = mysql_fetch_row(result)) != NULL) {
-                models[modelCount].userId = atoi(row[2]);
-                models[modelCount].id = atoi(row[3]);
-                models[modelCount].dataSize = atoi(row[1]);
-                models[modelCount].gender = atoi(row[4]);
-                models[modelCount].age = atoi(row[5]);
-                models[modelCount].passCount = atoi(row[6]);
-                models[modelCount].semblance = atof(row[7]);
-                models[modelCount].faceData = (MByte*)malloc(models[modelCount].dataSize);
-                base64_decode(row[0], (unsigned char*)models[modelCount].faceData);
-                modelCount++;
+                try {
+                    models[modelCount].userId = atoi(row[2]);
+                    models[modelCount].id = atoi(row[3]);
+                    models[modelCount].dataSize = 22020;
+                    models[modelCount].gender = atoi(row[4]);
+                    models[modelCount].age = atoi(row[5]);
+                    models[modelCount].passCount = atoi(row[6]);
+                    models[modelCount].semblance = atof(row[7]);
+                    models[modelCount].faceData = (MByte*)malloc(models[modelCount].dataSize);
+                    base64_decode(row[0], (unsigned char*)models[modelCount].faceData);
+                    modelCount++;
+                } catch(...) {
+                    continue;
+                }
             }
             mysql_free_result(result);
         }
@@ -136,7 +140,7 @@ int getFaceCount() {
 /**
  * 获取人脸数据信息
  */
-FaceModelResult* getFaceModel(int *len, int pageNo) {
+FaceModelResult* getFaceModel(int *len) {
     int cnt = checkUpdate();
     if (cnt == 1){
         modelCount = 0;
@@ -145,11 +149,11 @@ FaceModelResult* getFaceModel(int *len, int pageNo) {
             _getFaceModel(i);
         }
         printf("获取成功！总共%d条数据\n", modelCount);
-        *len = modelCount;
-        char i_query[1000];
+        char i_query[100];
         sprintf(i_query, "update config set isUpdate=0 where id=1");
         mysql_query(&mysql, i_query);
     }
+    *len = modelCount;
     return models;
 }
 
@@ -175,7 +179,7 @@ int addFaceModel(const int id, const char* model, const int size, const char* pa
 Attachment getAttachment(const int id) {
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
-    char i_query[300];
+    char i_query[100];
     Attachment attachment = {0};
     sprintf(i_query, "select path, width, height from attachment where id=%d", id);
     if(mysql_query(&mysql, i_query) == 0) {
@@ -196,7 +200,7 @@ Attachment getAttachment(const int id) {
  * 记录门禁
  */
 int insertRecord(const int id, const int count, const char* path, const MFloat score) {
-    char i_query[300];
+    char i_query[200];
     sprintf(i_query, "insert into camera_record(people_id, face_img, count, semblance) values(%d, '%s', %d, %f)", id, path, count, score);
     printf("%s\n", i_query);
     if(mysql_query(&mysql, i_query) == 0) {
@@ -291,7 +295,7 @@ char* getRecordImage(const int id, MFloat *score) {
  */
 FaceModelResult* faceDataTest(const int id, int *len) {
     FaceModelResult *textModel = (FaceModelResult*)malloc(3);
-    char i_query[1000];
+    char i_query[300];
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 and people_id=%d", id);

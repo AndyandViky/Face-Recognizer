@@ -1,4 +1,8 @@
 #include "header.h"
+#include <fcntl.h>
+#include <linux/kd.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
 
 #include "arcsoft_fsdk_face_detection.h"
 
@@ -340,4 +344,11 @@ int getOpenCameraCount() {
         if (cameraBox[i].isOpen) count++;
     }
     return count;
+}
+
+/**
+ * 打开声音
+ */
+int openVoice() {
+    printf("\a");
 }

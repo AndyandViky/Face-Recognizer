@@ -46,7 +46,7 @@ LPAFD_FSDK_FACERES getStillImage(ASVLOFFSCREEN inputImg) {
         }
         return faceResult;
     }
-    printf("引擎是空的!\n");
+    // printf("引擎是空的!\n");
     return NULL;
 }
 
