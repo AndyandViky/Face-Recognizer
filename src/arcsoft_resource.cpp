@@ -411,12 +411,13 @@ extern "C" {
         ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
         LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
-            printf("检测到人脸\n");
             printf("人脸数量为==%d\n", faceResult->nFace);
             AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+            printf("=====提取特征成功");
             char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
             int result = addFaceModel(id, base64, faceModels.lFeatureSize, (char*)attachment.path, isActivte);
+            free(base64);
             return result;
         }
         return -1;
