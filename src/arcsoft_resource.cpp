@@ -439,6 +439,15 @@ extern "C" {
         return -1;
     }
     /**
+     * 手机开门
+     */
+    int openDoorByPhont() {
+        openVoice();
+        printf("开门成功，延迟2秒\n");
+        sleep(2); //延迟5秒
+        printf("继续检测=======\n");
+    }
+    /**
      * 更新第二张人脸图片
      */
     int updateSecondFaceModel(const int peopleId, const int recordId) {

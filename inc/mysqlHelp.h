@@ -179,7 +179,7 @@ int addFaceModel(const int id, const char* model, const int size, const char* pa
 Attachment getAttachment(const int id) {
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
-    char i_query[100];
+    char i_query[200];
     Attachment attachment = {0};
     sprintf(i_query, "select path, width, height from attachment where id=%d", id);
     if(mysql_query(&mysql, i_query) == 0) {
