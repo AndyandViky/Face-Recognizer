@@ -409,7 +409,7 @@ extern "C" {
         strcat(paths, attachment.path);
         toYuv(paths, REGISTER_PATH);
         ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
-        LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+        LPAFD_FSDK_FACERES faceResult = getNewStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
             printf("人脸数量为==%d\n", faceResult->nFace);
             AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
