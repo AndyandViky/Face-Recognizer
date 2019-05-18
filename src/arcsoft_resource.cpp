@@ -387,10 +387,10 @@ extern "C" {
         toYuv(attachment.path, CHECK_PATH);
         ASVLOFFSCREEN inputImg = getImage(CHECK_PATH, attachment.width, attachment.height);
         
-        LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+        LPAFD_FSDK_FACERES faceResult = getNewStillImage(inputImg);
         
         if(faceResult != NULL && faceResult->nFace == 1){
-            AFR_FSDK_FACEMODEL faceModels = getFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
+            AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
             if (faceModels.lFeatureSize > 0) {
                 return 1;
             }
@@ -522,19 +522,20 @@ extern "C" {
 }   
 
 int main(int argc, char* argv[]) {
-    initAllEngine();
-    // writeFd(0);
-    // addModel(2, 171, 0);
-    // float result;
-    // ageText(595, 607, &result);
-    // printf("%f\n", result);
-    // int result = openCamera(0);
-    openCamera(0);
-    // openCamera(1);
+    printf("%ld\n", getCurTime());
+    // initAllEngine();
+    // // writeFd(0);
+    // // addModel(2, 171, 0);
+    // // float result;
+    // // ageText(595, 607, &result);
+    // // printf("%f\n", result);
+    // // int result = openCamera(0);
+    // openCamera(0);
+    // // openCamera(1);
 
-    while(swith) {
-    }
-    freeAllEngine();
+    // while(swith) {
+    // }
+    // freeAllEngine();
     return 0;
 }
 // g++ arcsoft_resource.cpp -fPIC -std=c++11 -L/home/andy/workspace/arcface/lib/linux_x64 -I/home/andy/workspace/arcface/inc -Iusr/include/opencv3 -L/usr/local/lib -lhiredis -lmysqlclient -lpthread -larcsoft_fsdk_face_detection -larcsoft_fsdk_face_recognition -larcsoft_fsdk_age_estimation -larcsoft_fsdk_gender_estimation $(pkg-config opencv --libs) -shared -o libface.so
