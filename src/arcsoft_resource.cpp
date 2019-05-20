@@ -119,7 +119,6 @@ void *_checkFace(void *arg) {
 
         // 如果 暂存的人脸数长时间不变动 并且 时间锁为关闭状态
         if (saveCount != 0 && !timeLimit) {
-            printf("=======\n");
             timeLimit = true;
             signal(SIGALRM, save_count_fn);  //后面的函数必须是带int参数的
             alarm(10); // 10秒之后刷新暂存人脸数
@@ -144,7 +143,7 @@ void *_checkFace(void *arg) {
             }
             // 获取性别以及年龄
             int gender = checkGender(inputImg, faceResult->rcFace[i], orient);
-            int age = checkAge(inputImg, faceResult->rcFace[i], orient);
+            // int age = checkAge(inputImg, faceResult->rcFace[i], orient);
             MBool isChangeGender = false;
             for(k=0; k<=faceLen; k++) {
                 // 此处判断是否处于当前循环的最后一组
@@ -164,7 +163,7 @@ void *_checkFace(void *arg) {
                     gettimeofday(&tv,NULL);
                     times = tv.tv_sec*1000000 + tv.tv_usec;
                     char path[255];
-                    sprintf(path, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", models[k].userId, times);
+                    sprintf(path, "%s%dimage%ld.jpg", IMAGE_PATH, models[k].userId, times);
                     if (currentIndex == cBox[0]) {
                         // 1
                         cvSaveImage(path , cameraBox[cBox[1]].cam0Frame);
@@ -204,18 +203,18 @@ void *_checkFace(void *arg) {
         }
         if (!isSuccess && faceResult->nFace > 0 && saveCount != faceResult->nFace) {
             saveCount = faceResult->nFace;
-            printf("插入记录\n");
+            printf("插入无关人员记录\n");
             // 判断是否成功
             gettimeofday(&tv,NULL);
             times = tv.tv_sec*1000000 + tv.tv_usec;
             char paths[255];
             if (currentIndex == cBox[0]) {
                 // 1
-                sprintf(paths, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", cameraBox[cBox[1]].cameraNum, times);
+                sprintf(paths, "%s%dimage%ld.jpg", IMAGE_PATH, cameraBox[cBox[1]].cameraNum, times);
                 cvSaveImage(paths , cameraBox[cBox[1]].cam0Frame);
             } else {
                 // 0
-                sprintf(paths, "/mnt/hgfs/static/images/record/%dimage%ld.jpg", cameraBox[cBox[0]].cameraNum, times);
+                sprintf(paths, "%s%dimage%ld.jpg", IMAGE_PATH, cameraBox[cBox[0]].cameraNum, times);
                 cvSaveImage(paths, cameraBox[cBox[0]].cam0Frame);
             }
             char iPath2[100];
@@ -227,9 +226,6 @@ void *_checkFace(void *arg) {
     // freeModels();
     pthread_join(checkID, NULL);
     printf("关闭检测线程成功\n");
-    // if (checkAllCamera() == 0) {
-    //     freeAllEngine(); 
-    // }
 }
 
 /**
@@ -407,13 +403,12 @@ extern "C" {
         char paths[300];
         strcpy(paths, ROOTPATH);
         strcat(paths, attachment.path);
-        toYuv(paths, REGISTER_PATH);
+        toYuv(paths, REGISTER_PATH); // 转换图片格式
         ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
         LPAFD_FSDK_FACERES faceResult = getNewStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
             printf("人脸数量为==%d\n", faceResult->nFace);
             AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
-            printf("=====提取特征成功");
             char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
             int result = addFaceModel(id, base64, faceModels.lFeatureSize, (char*)attachment.path, isActivte);
@@ -460,12 +455,13 @@ extern "C" {
         toYuv(paths, UPDATE_PATH);
         ASVLOFFSCREEN inputImg = getImage(UPDATE_PATH, INPUT_IMAGE_WIDTH, INPUT_IMAGE_HEIGHT);
         
-        LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+        LPAFD_FSDK_FACERES faceResult = getNewStillImage(inputImg);
         if(faceResult != NULL && faceResult->nFace == 1){
             AFR_FSDK_FACEMODEL faceModels = getNewFeature(inputImg, faceResult->rcFace[0], faceResult->lfaceOrient[0]);
             char *base64 = (char *)malloc(30000);
             base64_encode(faceModels.pbFeature, base64);
             int result = updateFaceModel(peopleId, base64, path, score, faceModels.lFeatureSize, 1);
+            free(base64);
             return result;
         }
         return -1;
@@ -484,7 +480,7 @@ extern "C" {
             strcat(paths, attachment.path);
             toYuv(paths, REGISTER_PATH);
             ASVLOFFSCREEN inputImg = getImage(REGISTER_PATH, attachment.width, attachment.height);
-            LPAFD_FSDK_FACERES faceResult = getStillImage(inputImg);
+            LPAFD_FSDK_FACERES faceResult = getNewStillImage(inputImg);
             if(faceResult != NULL && faceResult->nFace == 1){
                 printf("检测到人脸\n");
                 printf("人脸数量为==%d\n", faceResult->nFace);
