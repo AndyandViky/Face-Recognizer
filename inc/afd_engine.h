@@ -51,6 +51,40 @@ LPAFD_FSDK_FACERES getStillImage(ASVLOFFSCREEN inputImg) {
 }
 
 /**
+ * 新开一个引擎得到人脸在图片中的数据
+ */
+LPAFD_FSDK_FACERES getNewStillImage(ASVLOFFSCREEN inputImg) {
+    MHandle hEngineDNew;
+    MByte *pWorkMemDNew = NULL;
+    pWorkMemDNew = (MByte *)malloc(WORKBUF_SIZE);
+    if(pWorkMemDNew == NULL){
+        fprintf(stderr, "fail to malloc workbuf\r\n");
+        return NULL;
+    }
+    
+    int ret = AFD_FSDK_InitialFaceEngine(APPID, SDKKEYD, pWorkMemDNew, WORKBUF_SIZE, 
+                                         &hEngineDNew, AFD_FSDK_OPF_0_HIGHER_EXT, 16, MAX_FACE_NUM);
+    if (ret != 0) {
+        fprintf(stderr, "fail to AFD_FSDK_InitialFaceEngine(): 0x%x\r\n", ret);
+        free(pWorkMemDNew);
+        return NULL;
+    }
+    if(hEngineDNew != NULL) {
+        LPAFD_FSDK_FACERES faceResult;
+        int ret = AFD_FSDK_StillImageFaceDetection(hEngineDNew, &inputImg, &faceResult);
+        if (ret != 0) {
+            fprintf(stderr, "fail to AFD_FSDK_StillImageFaceDetection(): 0x%x\r\n", ret);
+            return NULL;
+        }
+        // AFD_FSDK_UninitialFaceEngine(hEngineDNew);
+        // free(pWorkMemDNew);
+        return faceResult;
+    }
+    return NULL;
+}
+
+
+/**
  * 释放引擎内存
  */
 void freeFaceDEngine() {

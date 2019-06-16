@@ -7,6 +7,7 @@
  */
 
 MYSQL mysql, *sock;
+MYSQL mysqlNew, *sockNew;
 /**
  * 连接mysql数据库
  */
@@ -28,6 +29,20 @@ int connectMysql() {
 void freeMysql() {
     mysql_close(sock);
     printf("关闭mysql连接成功！\n");
+}
+
+/**
+ * 连接mysql数据库
+ */
+int connectToNewMysql() {
+    mysql_init(&mysqlNew);
+    sock = mysql_real_connect(&mysqlNew, server, user, password, database, port, NULL, 0);
+    if(sock == NULL) {
+        printf("连接mysql失败：%s\n", mysql_error(sockNew));
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 
@@ -63,7 +78,18 @@ int insertFaceModel(AFR_FSDK_FACEMODEL faceModel) {
 /**
  * 检测人脸库是否更新
  */
+long int preGetTime = 0;
+long int getCurTime() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 int checkUpdate() {
+    long int curTime = getCurTime();
+    if( curTime - preGetTime < 3000) {
+        return 0;
+    }
+    preGetTime = curTime;
     // 1. 查询所有的摄像头状态
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
@@ -162,28 +188,32 @@ FaceModelResult* getFaceModel(int *len) {
  */
 
 int addFaceModel(const int id, const char* model, const int size, const char* path, const int isActived) {
+    int tResult = -1;
+    connectToNewMysql();
     char i_query[30000];
     sprintf(i_query, "insert into face_data(people_id, model_data, data_count, is_active, `type`, model_image) values(%d, '%s', %d, %d, %d, '%s')", id, model, size, isActived, 0, path);
-    printf("%s\n", i_query);
-    if(mysql_query(&mysql, i_query) == 0) {
-        return 1;
+    if(mysql_query(&mysqlNew, i_query) == 0) {
+        printf("增加模型成功\n");
+        tResult = 1;
     } else {
-        printf("插入失败%s\n", mysql_error(sock));
-        return -1;
+        printf("插入失败\n");
     }
+    if(sockNew) mysql_close(sockNew);
+    return tResult;
 }
 
 /**
  * 根据imageId获取 path
  */
 Attachment getAttachment(const int id) {
+    connectToNewMysql();
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200];
     Attachment attachment = {0};
     sprintf(i_query, "select path, width, height from attachment where id=%d", id);
-    if(mysql_query(&mysql, i_query) == 0) {
-        result = mysql_store_result(&mysql);
+    if(mysql_query(&mysqlNew, i_query) == 0) {
+        result = mysql_store_result(&mysqlNew);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
                 strcat(attachment.path, row[0]);
@@ -193,6 +223,7 @@ Attachment getAttachment(const int id) {
             mysql_free_result(result);
         }
     }
+    if(sockNew) mysql_close(sockNew);
     return attachment;
 }
 
@@ -230,14 +261,16 @@ int updateFaceData(const int id, const MFloat result, const int count) {
  * 相似度极高, 替换模型
  */
 int updateFaceModel(const int id, const char* model, const char* path, const MFloat similScore, const int size, const int type) {
+    connectToNewMysql();
     MYSQL_RES *result; // 保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200], u_query[30000];
     int dataId = -1;
+    int tResult = -1; // 结果输出
     MFloat semblance = 0.00f;
     sprintf(i_query, "select id, semblance from face_data where is_active=1 and people_id=%d and `type`=%d", id, type);
-    if(mysql_query(&mysql, i_query) == 0) {
-        result = mysql_store_result(&mysql);
+    if(mysql_query(&mysqlNew, i_query) == 0) {
+        result = mysql_store_result(&mysqlNew);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
                 dataId = atoi(row[0]);
@@ -248,59 +281,62 @@ int updateFaceModel(const int id, const char* model, const char* path, const MFl
     if (dataId == -1) {
         // 说明没有寻找到数据 insert
         sprintf(u_query, "insert into face_data(people_id, model_data, data_count, model_image, is_active, `type`, semblance) values(%d, '%s', %d, '%s', %d, %d, %f)", id, model, size, path, 1, type, similScore);
-        if(mysql_query(&mysql, u_query) == 0) {
-            return 1;
+        if(mysql_query(&mysqlNew, u_query) == 0) {
+            tResult = 1;
         }
     } else {
         // 判断数据是否小于当前检测出来的数据
         if (semblance < similScore) {
             // 替换数据
             sprintf(u_query, "update face_data set model_data='%s', semblance=%f, model_image='%s' where people_id=%d and type=%d", model, similScore, path, id, type);
-            if(mysql_query(&mysql, u_query) == 0) {
+            if(mysql_query(&mysqlNew, u_query) == 0) {
                 printf("相似度极高更新成功！\n");
-                return 1;
+                tResult = 1;
             } else {
                 printf("更新失败%s\n", mysql_error(sock));
-                return -1;
             }
         }
     }
-    return -1;
+    if(sockNew) mysql_close(sockNew);
+    return tResult;
 }
 
 /**
  * 根据record_id 获取图片路径
  */
 char* getRecordImage(const int id, MFloat *score) {
+    char *tResult = (char*)"fail";
+    connectToNewMysql();
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     char i_query[200];
     sprintf(i_query, "select face_img, semblance from camera_record where id=%d", id);
-    if(mysql_query(&mysql, i_query) == 0) {
-        result = mysql_store_result(&mysql);
+    if(mysql_query(&mysqlNew, i_query) == 0) {
+        result = mysql_store_result(&mysqlNew);
         if(result) {
             if((row = mysql_fetch_row(result)) != NULL) {
                 *score = atof(row[1]);
-                return row[0];
+                tResult = row[0];
             }
             mysql_free_result(result);
         }
     }
-    char *fail = (char*)"fail";
-    return fail;
+    if(sockNew) mysql_close(sockNew);
+    return tResult;
 }
 
 /**
  * 根据id获取人脸数据
  */
 FaceModelResult* faceDataTest(const int id, int *len) {
+    connectToNewMysql();
     FaceModelResult *textModel = (FaceModelResult*)malloc(3);
     char i_query[300];
     MYSQL_RES *result; //保存结果
     MYSQL_ROW row; // 代表的是结果集中的一行
     sprintf(i_query, "select model_data, data_count, people_id, face_data.id, gender, age, pass_count, face_data.semblance from face_data inner join peoples on face_data.people_id=peoples.id where face_data.is_active=1 and people_id=%d", id);
-    if(mysql_query(&mysql, i_query) == 0) {
-        result = mysql_store_result(&mysql);
+    if(mysql_query(&mysqlNew, i_query) == 0) {
+        result = mysql_store_result(&mysqlNew);
         int testCount = 0;
         if(result) {
             while((row = mysql_fetch_row(result)) != NULL) {
@@ -320,5 +356,6 @@ FaceModelResult* faceDataTest(const int id, int *len) {
             mysql_free_result(result);
         }
     }
+    if(sockNew) mysql_close(sockNew);
     return textModel;
 }

@@ -9,6 +9,7 @@
 #define REGISTER_PATH "/home/andy/workspace/arcface/recognitionImage/register.yuv"
 #define CHECK_PATH "/home/andy/workspace/arcface/recognitionImage/check.yuv"
 #define UPDATE_PATH "/home/andy/workspace/arcface/recognitionImage/secondImage.yuv"
+#define IMAGE_PATH "/mnt/hgfs/static/images/record/"
 
 /**
  * 图像比较参数
